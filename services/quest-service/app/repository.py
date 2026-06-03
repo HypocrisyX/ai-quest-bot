@@ -1,0 +1,183 @@
+from datetime import date, datetime, timezone
+from typing import Optional
+
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .models import (
+    DailyQuest, Quest, QuestCriterion, QuestHint,
+    UserDailyCompletion, UserHintUsed, UserQuestProgress,
+)
+from .schemas import QuestDetailOut, QuestCriterionOut, QuestHintOut
+
+
+async def get_quest(session: AsyncSession, quest_id: int) -> Optional[Quest]:
+    result = await session.execute(
+        select(Quest).where(Quest.id == quest_id, Quest.is_active == True)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_quests_for_level(
+    session: AsyncSession, user_level: int
+) -> list[Quest]:
+    result = await session.execute(
+        select(Quest).where(
+            Quest.level_min <= user_level,
+            Quest.is_active == True,
+        ).order_by(Quest.order_index)
+    )
+    return list(result.scalars())
+
+
+async def get_quest_criteria(
+    session: AsyncSession, quest_id: int
+) -> list[QuestCriterion]:
+    result = await session.execute(
+        select(QuestCriterion).where(QuestCriterion.quest_id == quest_id)
+    )
+    return list(result.scalars())
+
+
+async def get_quest_hints(
+    session: AsyncSession, quest_id: int
+) -> list[QuestHint]:
+    result = await session.execute(
+        select(QuestHint)
+        .where(QuestHint.quest_id == quest_id)
+        .order_by(QuestHint.order_index)
+    )
+    return list(result.scalars())
+
+
+async def get_quest_detail(
+    session: AsyncSession, quest_id: int
+) -> Optional[QuestDetailOut]:
+    quest = await get_quest(session, quest_id)
+    if not quest:
+        return None
+
+    criteria = await get_quest_criteria(session, quest_id)
+    hints = await get_quest_hints(session, quest_id)
+
+    return QuestDetailOut(
+        **{c: getattr(quest, c) for c in QuestDetailOut.model_fields if hasattr(quest, c)},
+        criteria=[QuestCriterionOut.model_validate(c) for c in criteria],
+        hints=[QuestHintOut.model_validate(h) for h in hints],
+    )
+
+
+async def get_hint(session: AsyncSession, hint_id: int) -> Optional[QuestHint]:
+    result = await session.execute(
+        select(QuestHint).where(QuestHint.id == hint_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_user_progress(
+    session: AsyncSession, user_id: int, quest_id: int
+) -> Optional[UserQuestProgress]:
+    result = await session.execute(
+        select(UserQuestProgress).where(
+            UserQuestProgress.user_id == user_id,
+            UserQuestProgress.quest_id == quest_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def start_quest(
+    session: AsyncSession, user_id: int, quest_id: int
+) -> UserQuestProgress:
+    progress = await get_user_progress(session, user_id, quest_id)
+    if progress:
+        progress.status = "in_progress"
+        progress.attempts += 1
+        await session.flush()
+        return progress
+
+    progress = UserQuestProgress(user_id=user_id, quest_id=quest_id, attempts=1)
+    session.add(progress)
+    await session.flush()
+    return progress
+
+
+async def complete_quest(
+    session: AsyncSession,
+    user_id: int,
+    quest_id: int,
+    score: int,
+    xp_earned: int,
+) -> UserQuestProgress:
+    progress = await get_user_progress(session, user_id, quest_id)
+    progress.status = "completed"
+    progress.xp_earned = xp_earned
+    progress.completed_at = datetime.now(timezone.utc)
+
+    if progress.best_score is None or score > progress.best_score:
+        progress.best_score = score
+
+    await session.flush()
+    return progress
+
+
+async def fail_quest(
+    session: AsyncSession, user_id: int, quest_id: int
+) -> UserQuestProgress:
+    progress = await get_user_progress(session, user_id, quest_id)
+    progress.status = "failed"
+    await session.flush()
+    return progress
+
+
+async def is_hint_used(
+    session: AsyncSession, user_id: int, hint_id: int
+) -> bool:
+    result = await session.execute(
+        select(UserHintUsed).where(
+            UserHintUsed.user_id == user_id,
+            UserHintUsed.hint_id == hint_id,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def record_hint_used(
+    session: AsyncSession, user_id: int, hint_id: int
+) -> None:
+    if not await is_hint_used(session, user_id, hint_id):
+        session.add(UserHintUsed(user_id=user_id, hint_id=hint_id))
+        await session.flush()
+
+
+async def get_daily_quest(
+    session: AsyncSession, for_date: date, user_level: int
+) -> Optional[DailyQuest]:
+    result = await session.execute(
+        select(DailyQuest).where(
+            DailyQuest.date == for_date,
+            DailyQuest.level_min <= user_level,
+        ).order_by(DailyQuest.level_min.desc()).limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def is_daily_completed(
+    session: AsyncSession, user_id: int, daily_id: int
+) -> bool:
+    result = await session.execute(
+        select(UserDailyCompletion).where(
+            UserDailyCompletion.user_id == user_id,
+            UserDailyCompletion.daily_id == daily_id,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def complete_daily(
+    session: AsyncSession, user_id: int, daily_id: int
+) -> UserDailyCompletion:
+    completion = UserDailyCompletion(user_id=user_id, daily_id=daily_id)
+    session.add(completion)
+    await session.flush()
+    return completion
