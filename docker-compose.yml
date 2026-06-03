@@ -1,6 +1,8 @@
 version: "3.9"
 
 services:
+  # ── Databases ────────────────────────────────────────────────────────────────
+
   db-user:
     image: postgres:16-alpine
     environment:
@@ -11,6 +13,11 @@ services:
       - "5432:5432"
     volumes:
       - pg_user:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d user_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   db-quest:
     image: postgres:16-alpine
@@ -22,6 +29,11 @@ services:
       - "5433:5432"
     volumes:
       - pg_quest:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quest_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   db-judge:
     image: postgres:16-alpine
@@ -33,6 +45,11 @@ services:
       - "5434:5432"
     volumes:
       - pg_judge:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d judge_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   db-social:
     image: postgres:16-alpine
@@ -44,6 +61,11 @@ services:
       - "5435:5432"
     volumes:
       - pg_social:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d social_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   db-notification:
     image: postgres:16-alpine
@@ -55,6 +77,11 @@ services:
       - "5436:5432"
     volumes:
       - pg_notification:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine
@@ -69,6 +96,60 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+
+  # ── Services ─────────────────────────────────────────────────────────────────
+
+  user-service:
+    build: ./services/user-service
+    ports:
+      - "8001:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-user:5432/user_service
+    depends_on:
+      db-user:
+        condition: service_healthy
+
+  quest-service:
+    build: ./services/quest-service
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-quest:5432/quest_service
+    depends_on:
+      db-quest:
+        condition: service_healthy
+
+  ai-judge-service:
+    build: ./services/ai-judge-service
+    ports:
+      - "8003:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-judge:5432/judge_service
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      db-judge:
+        condition: service_healthy
+
+  social-service:
+    build: ./services/social-service
+    ports:
+      - "8004:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-social:5432/social_service
+    depends_on:
+      db-social:
+        condition: service_healthy
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "8005:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-notification:5432/notification_service
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    depends_on:
+      db-notification:
+        condition: service_healthy
 
 volumes:
   pg_user:
