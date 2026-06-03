@@ -147,15 +147,19 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-notification:5432/notification_service
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     depends_on:
       db-notification:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
   bot-service:
     build: ./services/bot-service
     environment:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       USER_SERVICE_URL: http://user-service:8000
       QUEST_SERVICE_URL: http://quest-service:8000
       JUDGE_SERVICE_URL: http://ai-judge-service:8000
@@ -163,6 +167,7 @@ services:
       NOTIFICATION_SERVICE_URL: http://notification-service:8000
     depends_on:
       - redis
+      - rabbitmq
       - user-service
       - quest-service
       - ai-judge-service

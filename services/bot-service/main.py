@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 
 from app.client import close_session
+from app.events import close as close_events
 from app.handlers import daily, leaderboard, profile, quests, start
 
 logging.basicConfig(level=logging.INFO)
@@ -26,6 +27,7 @@ async def main() -> None:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         await close_session()
+        await close_events()
         await bot.session.close()
 
 

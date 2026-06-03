@@ -4,8 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
-from app import client
+from app import client, events
 from app.keyboards import back_to_main, cancel, quest_detail, quest_list, quest_result
+
+STREAK_MILESTONES = {7, 30, 100}
 
 router = Router()
 
@@ -141,13 +143,22 @@ async def handle_answer(message: Message, state: FSMContext):
         xp_earned = quest["xp_reward"]
         await client.complete_quest(user_id, quest["id"], score, xp_earned)
         xp_result = await client.add_xp(user_id, xp_earned, "quest_complete")
-        await client.update_streak(user_id)
+        streak_result = await client.update_streak(user_id)
 
         result_text += f"\n\n⚡️ +{xp_earned} XP"
         if xp_result.get("leveled_up"):
             result_text += f"\n🎉 <b>Новый уровень: {xp_result['level_after']}!</b>"
+            await events.publish_level_up(
+                user_id,
+                xp_result["level_before"],
+                xp_result["level_after"],
+            )
         if quest.get("crystal_reward"):
             result_text += f"\n💎 +{quest['crystal_reward']} кристаллов"
+
+        streak_days = streak_result.get("streak_days", 0)
+        if streak_days in STREAK_MILESTONES:
+            await events.publish_streak_milestone(user_id, streak_days)
     else:
         await client.fail_quest(user_id, quest["id"])
 

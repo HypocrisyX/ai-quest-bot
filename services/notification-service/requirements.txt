@@ -5,3 +5,5 @@ asyncpg~=0.30
 alembic~=1.14
 pydantic~=2.10
 aiohttp~=3.11
+aio-pika~=9.0
+aiogram~=3.15
