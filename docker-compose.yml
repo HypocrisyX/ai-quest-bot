@@ -151,6 +151,24 @@ services:
       db-notification:
         condition: service_healthy
 
+  bot-service:
+    build: ./services/bot-service
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      REDIS_URL: redis://redis:6379
+      USER_SERVICE_URL: http://user-service:8000
+      QUEST_SERVICE_URL: http://quest-service:8000
+      JUDGE_SERVICE_URL: http://ai-judge-service:8000
+      SOCIAL_SERVICE_URL: http://social-service:8000
+      NOTIFICATION_SERVICE_URL: http://notification-service:8000
+    depends_on:
+      - redis
+      - user-service
+      - quest-service
+      - ai-judge-service
+      - social-service
+      - notification-service
+
 volumes:
   pg_user:
   pg_quest:
