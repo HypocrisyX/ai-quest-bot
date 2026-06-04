@@ -1,8 +1,17 @@
 from sqlalchemy import (
-    BigInteger, Boolean, Column, Date, ForeignKey,
-    Integer, SmallInteger, String, Text, TIMESTAMP
+    TIMESTAMP,
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
 )
 from sqlalchemy.sql import func
+
 from .database import Base
 
 

@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
@@ -15,7 +15,8 @@ def main_menu() -> InlineKeyboardMarkup:
 def quest_list(quests: list[dict]) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for q in quests:
-        type_icon = {"theory": "📖", "practice": "💻", "challenge": "🔥", "boss": "👹"}.get(q["type"], "❓")
+        type_icons = {"theory": "📖", "practice": "💻", "challenge": "🔥", "boss": "👹"}
+        type_icon = type_icons.get(q["type"], "❓")
         kb.button(text=f"{type_icon} {q['title']}", callback_data=f"quest:detail:{q['id']}")
     kb.button(text="◀️ Назад", callback_data="menu:main")
     kb.adjust(1)

@@ -4,13 +4,18 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from . import repository as repo
 from .database import get_db
 from .schemas import (
-    CompleteQuestRequest, DailyQuestOut, QuestDetailOut,
-    QuestHintRevealOut, QuestOut, QuestProgressOut,
-    StartQuestRequest, UseHintRequest,
+    CompleteQuestRequest,
+    DailyQuestOut,
+    QuestDetailOut,
+    QuestHintRevealOut,
+    QuestOut,
+    QuestProgressOut,
+    StartQuestRequest,
+    UseHintRequest,
 )
-from . import repository as repo
 
 router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]

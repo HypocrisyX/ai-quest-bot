@@ -4,8 +4,8 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-06-03
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0001"
 down_revision = None
@@ -27,7 +27,9 @@ def upgrade() -> None:
     op.create_table(
         "quests",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("level_min", sa.SmallInteger(), sa.ForeignKey("game_levels.level"), nullable=False),
+        sa.Column(
+            "level_min", sa.SmallInteger(), sa.ForeignKey("game_levels.level"), nullable=False
+        ),
         sa.Column("level_max", sa.SmallInteger()),
         sa.Column("type", sa.String(16), nullable=False),
         sa.Column("title", sa.String(128), nullable=False),
@@ -45,7 +47,9 @@ def upgrade() -> None:
     op.create_table(
         "quest_criteria",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("quest_id", sa.Integer(), sa.ForeignKey("quests.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "quest_id", sa.Integer(), sa.ForeignKey("quests.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("criterion", sa.String(128), nullable=False),
         sa.Column("weight", sa.SmallInteger(), server_default="1"),
         sa.Column("description", sa.Text()),
@@ -54,7 +58,9 @@ def upgrade() -> None:
     op.create_table(
         "quest_hints",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("quest_id", sa.Integer(), sa.ForeignKey("quests.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "quest_id", sa.Integer(), sa.ForeignKey("quests.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("order_index", sa.SmallInteger(), nullable=False),
         sa.Column("cost", sa.SmallInteger(), server_default="5"),
         sa.Column("text", sa.Text(), nullable=False),
@@ -73,7 +79,9 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.TIMESTAMP(timezone=True)),
         sa.UniqueConstraint("user_id", "quest_id", name="uq_user_quest"),
     )
-    op.create_index("ix_user_quest_progress_user_status", "user_quest_progress", ["user_id", "status"])
+    op.create_index(
+        "ix_user_quest_progress_user_status", "user_quest_progress", ["user_id", "status"]
+    )
 
     op.create_table(
         "user_hints_used",

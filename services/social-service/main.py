@@ -1,13 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
 
+from app.database import engine
+from app.router import router
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-
-from app.database import engine
-from app.router import router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,7 +33,10 @@ async def health():
         return {"status": "ok", "service": "social-service"}
     except Exception as exc:
         logger.error("Health check failed: %s", exc)
-        return JSONResponse(status_code=503, content={"status": "error", "service": "social-service"})
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "service": "social-service"},
+        )
 
 
 @app.exception_handler(RequestValidationError)

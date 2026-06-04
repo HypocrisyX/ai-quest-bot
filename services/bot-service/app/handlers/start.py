@@ -1,6 +1,6 @@
 from aiogram import Router
 from aiogram.filters import CommandStart
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery, Message
 
 from app import client
 from app.keyboards import main_menu

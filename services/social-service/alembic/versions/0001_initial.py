@@ -4,8 +4,8 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-06-03
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0001"
 down_revision = None
@@ -44,7 +44,11 @@ def upgrade() -> None:
         sa.Column("captured_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
         sa.UniqueConstraint("period", "period_start", "user_id", name="uq_leaderboard_user_period"),
     )
-    op.create_index("ix_leaderboard_period_rank", "leaderboard_entries", ["period", "period_start", "rank"])
+    op.create_index(
+        "ix_leaderboard_period_rank",
+        "leaderboard_entries",
+        ["period", "period_start", "rank"],
+    )
 
     op.create_table(
         "follows",

@@ -1,6 +1,7 @@
-from sqlalchemy import BigInteger, Column, Integer, SmallInteger, String, Text, TIMESTAMP
+from sqlalchemy import TIMESTAMP, BigInteger, Column, Integer, SmallInteger, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
+
 from .database import Base
 
 

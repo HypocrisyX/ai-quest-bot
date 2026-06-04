@@ -1,4 +1,4 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -19,7 +19,8 @@ class QuestFlow(StatesGroup):
 
 
 def _quest_card(q: dict) -> str:
-    type_label = {"theory": "Теория", "practice": "Практика", "challenge": "Челлендж", "boss": "Босс"}.get(q["type"], q["type"])
+    type_map = {"theory": "Теория", "practice": "Практика", "challenge": "Челлендж", "boss": "Босс"}
+    type_label = type_map.get(q["type"], q["type"])
     lines = [
         f"⚔️ <b>{q['title']}</b>",
         f"📌 Тип: {type_label} · Уровень {q['level_min']}+",
@@ -61,7 +62,9 @@ async def cb_quests(call: CallbackQuery, state: FSMContext):
     level = profile["stats"]["level"]
     quests = await client.get_quests(level)
     if not quests:
-        await call.message.edit_text("Квестов для твоего уровня пока нет.", reply_markup=back_to_main())
+        await call.message.edit_text(
+            "Квестов для твоего уровня пока нет.", reply_markup=back_to_main()
+        )
         await call.answer()
         return
     await call.message.edit_text(
@@ -133,7 +136,8 @@ async def handle_answer(message: Message, state: FSMContext):
 
     bar = _score_bar(score)
     result_text = (
-        f"{'✅' if passed else '❌'} <b>{'Квест пройден!' if passed else 'Попробуй ещё раз'}</b>\n\n"
+        f"{'✅' if passed else '❌'} "
+        f"<b>{'Квест пройден!' if passed else 'Попробуй ещё раз'}</b>\n\n"
         f"📊 Результат: <b>{score}/100</b>\n"
         f"[{bar}]\n\n"
         f"💬 {feedback}"

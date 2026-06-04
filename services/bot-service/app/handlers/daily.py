@@ -1,10 +1,9 @@
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from app import client
-from app.keyboards import back_to_main, cancel
+from app.keyboards import back_to_main
 
 router = Router()
 

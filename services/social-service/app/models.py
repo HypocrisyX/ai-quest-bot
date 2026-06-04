@@ -1,5 +1,6 @@
-from sqlalchemy import BigInteger, Column, Date, Integer, SmallInteger, String, TIMESTAMP
+from sqlalchemy import TIMESTAMP, BigInteger, Column, Date, Integer, SmallInteger, String
 from sqlalchemy.sql import func
+
 from .database import Base
 
 

@@ -4,8 +4,8 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-06-03
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0001"
@@ -41,7 +41,9 @@ def upgrade() -> None:
 
     op.create_table(
         "subscriptions",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+        sa.Column(
+            "id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")
+        ),
         sa.Column("user_id", sa.BigInteger(), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("plan", sa.String(16), nullable=False),
         sa.Column("status", sa.String(16), server_default="active"),
@@ -65,7 +67,9 @@ def upgrade() -> None:
     op.create_table(
         "user_achievements",
         sa.Column("user_id", sa.BigInteger(), sa.ForeignKey("users.id"), primary_key=True),
-        sa.Column("achievement_id", sa.Integer(), sa.ForeignKey("achievements.id"), primary_key=True),
+        sa.Column(
+            "achievement_id", sa.Integer(), sa.ForeignKey("achievements.id"), primary_key=True
+        ),
         sa.Column("earned_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
     )
 
@@ -79,7 +83,9 @@ def upgrade() -> None:
         sa.Column("balance", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.func.now()),
     )
-    op.create_index("ix_crystal_transactions_user_date", "crystal_transactions", ["user_id", "created_at"])
+    op.create_index(
+        "ix_crystal_transactions_user_date", "crystal_transactions", ["user_id", "created_at"]
+    )
 
     op.create_table(
         "xp_history",

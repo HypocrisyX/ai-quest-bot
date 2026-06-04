@@ -5,11 +5,19 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
-    Achievement, CrystalTransaction, Referral,
-    Subscription, User, UserAchievement, UserStats, XpHistory,
+    Achievement,
+    CrystalTransaction,
+    Referral,
+    Subscription,
+    User,
+    UserAchievement,
+    UserStats,
+    XpHistory,
 )
 from .schemas import (
-    AddCrystalsResponse, AddXpResponse, UserCreate,
+    AddCrystalsResponse,
+    AddXpResponse,
+    UserCreate,
 )
 
 

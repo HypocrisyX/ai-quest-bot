@@ -1,13 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
 
+from app.database import engine
+from app.router import router
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
-
-from app.database import engine
-from app.router import router
 
 logging.basicConfig(
     level=logging.INFO,

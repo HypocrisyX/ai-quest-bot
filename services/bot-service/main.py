@@ -5,7 +5,6 @@ import os
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 from aiohttp import web
-
 from app.client import close_session
 from app.events import close as close_events
 from app.handlers import daily, leaderboard, profile, quests, start

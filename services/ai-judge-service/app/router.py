@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .database import get_db
-from .schemas import EvaluateRequest, EvaluationOut, EvaluationSummaryOut
 from . import repository as repo
+from .database import get_db
 from .judge import evaluate_answer
+from .schemas import EvaluateRequest, EvaluationOut, EvaluationSummaryOut
 
 router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]

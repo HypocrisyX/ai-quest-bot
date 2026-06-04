@@ -1,19 +1,24 @@
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
-    DailyQuest, Quest, QuestCriterion, QuestHint,
-    UserDailyCompletion, UserHintUsed, UserQuestProgress,
+    DailyQuest,
+    Quest,
+    QuestCriterion,
+    QuestHint,
+    UserDailyCompletion,
+    UserHintUsed,
+    UserQuestProgress,
 )
-from .schemas import QuestDetailOut, QuestCriterionOut, QuestHintOut
+from .schemas import QuestCriterionOut, QuestDetailOut, QuestHintOut
 
 
 async def get_quest(session: AsyncSession, quest_id: int) -> Optional[Quest]:
     result = await session.execute(
-        select(Quest).where(Quest.id == quest_id, Quest.is_active == True)
+        select(Quest).where(Quest.id == quest_id, Quest.is_active)
     )
     return result.scalar_one_or_none()
 
@@ -24,7 +29,7 @@ async def get_quests_for_level(
     result = await session.execute(
         select(Quest).where(
             Quest.level_min <= user_level,
-            Quest.is_active == True,
+            Quest.is_active,
         ).order_by(Quest.order_index)
     )
     return list(result.scalars())

@@ -3,14 +3,22 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from . import repository as repo
 from .database import get_db
 from .schemas import (
-    AddCrystalsRequest, AddCrystalsResponse,
-    AddXpRequest, AddXpResponse,
-    AchievementOut, ReferralCreate, ReferralOut,
-    SubscriptionOut, UserCreate, UserOut, UserProfileOut, UserStatsOut,
+    AchievementOut,
+    AddCrystalsRequest,
+    AddCrystalsResponse,
+    AddXpRequest,
+    AddXpResponse,
+    ReferralCreate,
+    ReferralOut,
+    SubscriptionOut,
+    UserCreate,
+    UserOut,
+    UserProfileOut,
+    UserStatsOut,
 )
-from . import repository as repo
 
 router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]

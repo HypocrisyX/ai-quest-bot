@@ -3,12 +3,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from . import repository as repo
 from .database import get_db
 from .schemas import (
-    MarkReadRequest, NotificationOut, NotificationPreferenceOut,
-    SendNotificationRequest, UpdatePreferenceRequest,
+    MarkReadRequest,
+    NotificationOut,
+    NotificationPreferenceOut,
+    SendNotificationRequest,
+    UpdatePreferenceRequest,
 )
-from . import repository as repo
 
 router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]

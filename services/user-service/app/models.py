@@ -1,10 +1,20 @@
+import uuid
+
 from sqlalchemy import (
-    BigInteger, Boolean, Column, Date, ForeignKey,
-    Integer, SmallInteger, String, Text, TIMESTAMP
+    TIMESTAMP,
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    ForeignKey,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-import uuid
+
 from .database import Base
 
 
