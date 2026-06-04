@@ -22,6 +22,59 @@ jobs:
       - run: pip install ruff==0.15.15
       - run: ruff check services/
 
+  test:
+    name: Tests — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: user-service
+            db: user_service_test
+            port: 5432
+            env: TEST_USER_DB_URL
+          - service: quest-service
+            db: quest_service_test
+            port: 5432
+            env: TEST_QUEST_DB_URL
+          - service: ai-judge-service
+            db: judge_service_test
+            port: 5432
+            env: TEST_JUDGE_DB_URL
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+      - name: Create test database
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -c \
+            "CREATE DATABASE ${{ matrix.db }};"
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: pip install -r requirements-test.txt
+      - name: Run tests
+        working-directory: services/${{ matrix.service }}
+        env:
+          ${{ matrix.env }}: postgresql+asyncpg://postgres:postgres@localhost:5432/${{ matrix.db }}
+        run: pytest -v
+
   build:
     name: Docker Build — ${{ matrix.service }}
     runs-on: ubuntu-latest

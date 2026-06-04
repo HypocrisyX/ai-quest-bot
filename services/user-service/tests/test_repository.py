@@ -1,0 +1,176 @@
+"""Tests for user-service business logic in repository.py."""
+from datetime import date, timedelta
+
+import pytest
+
+from app import repository as repo
+from app.schemas import UserCreate
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _user_data(telegram_id: int = 100) -> UserCreate:
+    return UserCreate(id=telegram_id, first_name="Test", username="tester")
+
+
+async def _make_user(db, telegram_id: int = 100):
+    user, _ = await repo.get_or_create_user(db, _user_data(telegram_id))
+    return user
+
+
+# ── get_or_create_user ────────────────────────────────────────────────────────
+
+async def test_create_user_new(db):
+    user, created = await repo.get_or_create_user(db, _user_data(1))
+    assert created is True
+    assert user.id == 1
+    assert user.first_name == "Test"
+
+
+async def test_create_user_idempotent(db):
+    await repo.get_or_create_user(db, _user_data(2))
+    user, created = await repo.get_or_create_user(db, _user_data(2))
+    assert created is False
+    assert user.id == 2
+
+
+async def test_create_user_creates_stats(db):
+    user, _ = await repo.get_or_create_user(db, _user_data(3))
+    stats = await repo.get_user_stats(db, user.id)
+    assert stats is not None
+    assert stats.level == 1
+    assert stats.xp == 0
+    assert stats.crystals == 0
+
+
+# ── add_xp ────────────────────────────────────────────────────────────────────
+
+async def test_add_xp_no_levelup(db):
+    await _make_user(db, 10)
+    result = await repo.add_xp(db, 10, 50, "quest_complete")
+    assert result.xp_after == 50
+    assert result.level_before == 1
+    assert result.level_after == 1
+    assert result.leveled_up is False
+
+
+async def test_add_xp_exact_levelup(db):
+    """100 XP at level 1 (xp_to_next=100) triggers level-up."""
+    await _make_user(db, 11)
+    result = await repo.add_xp(db, 11, 100, "quest_complete")
+    assert result.leveled_up is True
+    assert result.level_after == 2
+    assert result.xp_after == 0  # consumed exactly
+
+
+async def test_add_xp_overflow_levelup(db):
+    """150 XP at level 1 → level-up with 50 XP carried over."""
+    await _make_user(db, 12)
+    result = await repo.add_xp(db, 12, 150, "quest_complete")
+    assert result.leveled_up is True
+    assert result.level_after == 2
+    assert result.xp_after == 50
+
+
+async def test_add_xp_multiple_levelups(db):
+    """Enough XP to skip two levels at once."""
+    await _make_user(db, 13)
+    # Level 1 needs 100, level 2 needs 200 → 300+ XP triggers 2 level-ups
+    result = await repo.add_xp(db, 13, 350, "quest_complete")
+    assert result.level_after >= 3
+
+
+async def test_add_xp_persisted(db):
+    await _make_user(db, 14)
+    await repo.add_xp(db, 14, 30, "quest_complete")
+    stats = await repo.get_user_stats(db, 14)
+    assert stats.xp == 30
+
+
+# ── add_crystals ──────────────────────────────────────────────────────────────
+
+async def test_add_crystals_positive(db):
+    await _make_user(db, 20)
+    result = await repo.add_crystals(db, 20, 50, "reward")
+    assert result.balance_before == 0
+    assert result.balance_after == 50
+
+
+async def test_add_crystals_subtract(db):
+    await _make_user(db, 21)
+    await repo.add_crystals(db, 21, 100, "reward")
+    result = await repo.add_crystals(db, 21, -30, "hint")
+    assert result.balance_after == 70
+
+
+async def test_add_crystals_floor_zero(db):
+    """Balance cannot go below 0 even with large negative delta."""
+    await _make_user(db, 22)
+    result = await repo.add_crystals(db, 22, -999, "hint")
+    assert result.balance_after == 0
+
+
+# ── update_streak ─────────────────────────────────────────────────────────────
+
+async def test_streak_first_day(db):
+    await _make_user(db, 30)
+    streak = await repo.update_streak(db, 30)
+    assert streak == 1
+
+
+async def test_streak_continuation(db):
+    await _make_user(db, 31)
+    stats = await repo.get_user_stats(db, 31)
+    stats.streak_last_at = date.today() - timedelta(days=1)
+    stats.streak_days = 5
+    await db.flush()
+    streak = await repo.update_streak(db, 31)
+    assert streak == 6
+
+
+async def test_streak_reset_after_gap(db):
+    await _make_user(db, 32)
+    stats = await repo.get_user_stats(db, 32)
+    stats.streak_last_at = date.today() - timedelta(days=3)
+    stats.streak_days = 10
+    await db.flush()
+    streak = await repo.update_streak(db, 32)
+    assert streak == 1
+
+
+async def test_streak_same_day_idempotent(db):
+    """Calling update_streak twice in one day should not increment."""
+    await _make_user(db, 33)
+    await repo.update_streak(db, 33)
+    streak = await repo.update_streak(db, 33)
+    assert streak == 1
+
+
+# ── referrals ─────────────────────────────────────────────────────────────────
+
+async def test_create_referral(db):
+    await _make_user(db, 40)
+    await _make_user(db, 41)
+    referral = await repo.create_referral(db, referrer_id=40, referee_id=41)
+    assert referral is not None
+    assert referral.referrer_id == 40
+    assert referral.referee_id == 41
+    assert referral.reward_granted is False
+
+
+async def test_create_referral_duplicate_returns_none(db):
+    await _make_user(db, 42)
+    await _make_user(db, 43)
+    await repo.create_referral(db, referrer_id=42, referee_id=43)
+    duplicate = await repo.create_referral(db, referrer_id=42, referee_id=43)
+    assert duplicate is None
+
+
+async def test_create_referral_one_referee_only(db):
+    """A user can be referred only once, even by a different referrer."""
+    await _make_user(db, 44)
+    await _make_user(db, 45)
+    await _make_user(db, 46)
+    await repo.create_referral(db, referrer_id=44, referee_id=46)
+    second = await repo.create_referral(db, referrer_id=45, referee_id=46)
+    assert second is None

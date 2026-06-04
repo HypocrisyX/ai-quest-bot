@@ -10,6 +10,19 @@
 
 ---
 
+## 2026-06-04 (продолжение)
+
+### Тесты
+
+**Добавлено:**
+- `user-service/tests/` — 20 тестов: репозиторий (XP/leveling, crystals, streak, referrals) + HTTP роутеры
+- `quest-service/tests/` — 13 тестов: репозиторий (get_quest, start/complete/fail, hints, get_quest_detail)
+- `ai-judge-service/tests/` — 8 тестов: unit-тесты `_compute_weighted_score` + мокнутый Claude в `evaluate_answer` + интеграционный тест роутера
+- `pytest.ini` и `requirements-test.txt` для каждого из трёх сервисов
+- `.github/workflows/ci.yml` расширен: новый job `test` с PostgreSQL service container, запускается для user/quest/ai-judge после lint
+
+---
+
 ## 2026-06-04
 
 ### CI/CD + Healthchecks + Error Handling
