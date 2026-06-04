@@ -11,11 +11,14 @@ SOCIAL_SVC = os.getenv("SOCIAL_SERVICE_URL", "http://social-service:8000")
 
 _session: Optional[aiohttp.ClientSession] = None
 
+_DEFAULT_TIMEOUT = aiohttp.ClientTimeout(total=10, connect=5)
+_JUDGE_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=5)  # Claude API can be slow
+
 
 def get_session() -> aiohttp.ClientSession:
     global _session
     if _session is None or _session.closed:
-        _session = aiohttp.ClientSession()
+        _session = aiohttp.ClientSession(timeout=_DEFAULT_TIMEOUT)
     return _session
 
 
@@ -149,15 +152,21 @@ async def evaluate(
     attempt_num: int,
     user_input: str,
 ) -> dict:
-    return await _post(f"{JUDGE_SVC}/evaluate", {
-        "user_id": user_id,
-        "quest_id": quest["id"],
-        "attempt_num": attempt_num,
-        "user_input": user_input,
-        "quest_title": quest["title"],
-        "quest_instructions": quest["instructions"],
-        "criteria": quest.get("criteria", []),
-    })
+    async with get_session().post(
+        f"{JUDGE_SVC}/evaluate",
+        json={
+            "user_id": user_id,
+            "quest_id": quest["id"],
+            "attempt_num": attempt_num,
+            "user_input": user_input,
+            "quest_title": quest["title"],
+            "quest_instructions": quest["instructions"],
+            "criteria": quest.get("criteria", []),
+        },
+        timeout=_JUDGE_TIMEOUT,
+    ) as r:
+        r.raise_for_status()
+        return await r.json()
 
 
 # ── Social Service ────────────────────────────────────────────────────────────

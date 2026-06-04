@@ -4,10 +4,12 @@ import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.types import ErrorEvent
 from aiohttp import web
 from app.client import close_session
 from app.events import close as close_events
 from app.handlers import daily, leaderboard, profile, quests, start
+from app.keyboards import back_to_main
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +33,22 @@ async def run_health_server() -> web.AppRunner:
     return runner
 
 
+async def error_handler(event: ErrorEvent) -> bool:
+    logger.exception("Unhandled error in update %s: %s", event.update.update_id, event.exception)
+    update = event.update
+    text = "⚠️ Что-то пошло не так. Попробуй ещё раз."
+    kb = back_to_main()
+    try:
+        if update.message:
+            await update.message.answer(text, reply_markup=kb)
+        elif update.callback_query:
+            await update.callback_query.answer("⚠️ Ошибка", show_alert=False)
+            await update.callback_query.message.answer(text, reply_markup=kb)
+    except Exception:
+        pass  # don't let the error handler itself crash
+    return True  # exception is handled
+
+
 async def main() -> None:
     runner = await run_health_server()
 
@@ -46,6 +64,7 @@ async def main() -> None:
     dp.include_router(quests.router)
     dp.include_router(leaderboard.router)
     dp.include_router(daily.router)
+    dp.error.register(error_handler)
 
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())

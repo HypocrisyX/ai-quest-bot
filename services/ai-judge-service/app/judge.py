@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 from typing import Any
 
 import anthropic
 
 from .schemas import CriterionIn, CriterionScoreOut
+
+logger = logging.getLogger(__name__)
 
 MODEL = os.getenv("JUDGE_MODEL", "claude-sonnet-4-6")
 _client: anthropic.AsyncAnthropic | None = None
@@ -97,9 +100,13 @@ async def evaluate_answer(
     ai_output = response.content[0].text
     tokens_used = response.usage.input_tokens + response.usage.output_tokens
 
-    parsed = json.loads(ai_output)
-    raw_scores: list[dict] = parsed["criteria_scores"]
-    feedback: str = parsed["overall_feedback"]
+    try:
+        parsed = json.loads(ai_output)
+        raw_scores: list[dict] = parsed["criteria_scores"]
+        feedback: str = parsed["overall_feedback"]
+    except (json.JSONDecodeError, KeyError) as exc:
+        logger.error("Claude returned unparseable JSON: %s | output=%.300s", exc, ai_output)
+        raise ValueError("AI judge returned unparseable response") from exc
 
     score = _compute_weighted_score(criteria, raw_scores)
     criteria_scores = [CriterionScoreOut(**s) for s in raw_scores]
