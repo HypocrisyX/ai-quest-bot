@@ -578,6 +578,23 @@ HINTS = {
 }
 
 
+# ── Categories ────────────────────────────────────────────────────────────────
+# Quest "worlds". Image-generation quests are tagged by title; everything else
+# defaults to "text". Video quests don't exist yet.
+
+IMAGE_TITLES = {
+    "Первая генерация изображения",
+    "Стиль и атмосфера",
+    "Negative prompts",
+    "Параметры: соотношение сторон и детали",
+    "Итерируй до результата",
+}
+
+
+def _category(title: str) -> str:
+    return "image" if title in IMAGE_TITLES else "text"
+
+
 # ── Seeding ───────────────────────────────────────────────────────────────────
 
 async def seed(conn: asyncpg.Connection) -> None:
@@ -609,6 +626,7 @@ async def seed(conn: asyncpg.Connection) -> None:
         (level_min, level_max, qtype, title, description, instructions,
          ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index) = q
 
+        category = _category(title)
         existing_id = await conn.fetchval(
             "SELECT id FROM quests WHERE title = $1", title
         )
@@ -620,12 +638,12 @@ async def seed(conn: asyncpg.Connection) -> None:
                     level_min = $2, level_max = $3, type = $4, description = $5,
                     instructions = $6, ai_tool = $7, xp_reward = $8,
                     crystal_reward = $9, time_limit_sec = $10, order_index = $11,
-                    is_active = true
+                    category = $12, is_active = true
                 WHERE id = $1
                 """,
                 existing_id, level_min, level_max, qtype, description,
                 instructions, ai_tool, xp_reward, crystal_reward,
-                time_limit_sec, order_index,
+                time_limit_sec, order_index, category,
             )
             quest_id = existing_id
             updated += 1
@@ -634,12 +652,14 @@ async def seed(conn: asyncpg.Connection) -> None:
                 """
                 INSERT INTO quests
                   (level_min, level_max, type, title, description, instructions,
-                   ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index, is_active)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true)
+                   ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index,
+                   category, is_active)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true)
                 RETURNING id
                 """,
                 level_min, level_max, qtype, title, description, instructions,
                 ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index,
+                category,
             )
             inserted += 1
 

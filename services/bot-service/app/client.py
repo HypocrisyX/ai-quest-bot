@@ -89,8 +89,12 @@ async def spend_crystals(user_id: int, amount: int, reason: str) -> dict:
 
 # ── Quest Service ─────────────────────────────────────────────────────────────
 
-async def get_quests(level: int, user_id: int) -> list[dict]:
-    return await _get(f"{QUEST_SVC}/quests", params={"level": level, "user_id": user_id})
+async def get_categories(user_id: int) -> list[dict]:
+    return await _get(f"{QUEST_SVC}/categories", params={"user_id": user_id})
+
+
+async def get_quests(category: str, user_id: int) -> list[dict]:
+    return await _get(f"{QUEST_SVC}/quests", params={"category": category, "user_id": user_id})
 
 
 async def get_quest_detail(quest_id: int) -> dict:

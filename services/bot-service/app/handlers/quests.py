@@ -7,7 +7,14 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from app import client, events
-from app.keyboards import back_to_main, cancel, quest_detail, quest_list, quest_result
+from app.keyboards import (
+    back_to_main,
+    cancel,
+    category_menu,
+    quest_detail,
+    quest_list,
+    quest_result,
+)
 
 STREAK_MILESTONES = {7, 30, 100}
 
@@ -48,37 +55,62 @@ def _score_bar(score: int) -> str:
 
 
 _LIST_HINT = "🔒 — закрыт, пройди предыдущий · ✅ — пройден"
+_CATEGORY_TITLES = {
+    "text": "📝 Текстовые промпты",
+    "image": "🖼 Генерация изображений",
+    "video": "🎬 Генерация видео",
+}
+_CATEGORIES_HEADER = (
+    "🗺 <b>Выбери мир</b>\n"
+    "<i>Каждый мир открывается, когда пройден предыдущий целиком.</i>"
+)
+
+
+async def _show_categories(message: Message, user_id: int, edit: bool):
+    categories = await client.get_categories(user_id)
+    kb = category_menu(categories)
+    if edit:
+        await message.edit_text(_CATEGORIES_HEADER, reply_markup=kb, parse_mode="HTML")
+    else:
+        await message.answer(_CATEGORIES_HEADER, reply_markup=kb, parse_mode="HTML")
 
 
 @router.message(Command("quests"))
 async def cmd_quests(message: Message):
-    profile = await client.get_profile(message.from_user.id)
-    level = profile["stats"]["level"]
-    quests = await client.get_quests(level, message.from_user.id)
-    if not quests:
-        await message.answer("Квестов для твоего уровня пока нет.", reply_markup=back_to_main())
-        return
-    await message.answer(
-        f"⚔️ <b>Квесты</b> (уровень {level}):\n<i>{_LIST_HINT}</i>",
-        reply_markup=quest_list(quests),
-        parse_mode="HTML",
-    )
+    await _show_categories(message, message.from_user.id, edit=False)
 
 
 @router.callback_query(lambda c: c.data == "menu:quests")
 async def cb_quests(call: CallbackQuery, state: FSMContext):
     await state.clear()
-    profile = await client.get_profile(call.from_user.id)
-    level = profile["stats"]["level"]
-    quests = await client.get_quests(level, call.from_user.id)
+    await _show_categories(call.message, call.from_user.id, edit=True)
+    await call.answer()
+
+
+@router.callback_query(lambda c: c.data == "cat:locked")
+async def cb_cat_locked(call: CallbackQuery):
+    await call.answer("🔒 Сначала пройди предыдущий мир целиком", show_alert=True)
+
+
+@router.callback_query(lambda c: c.data == "cat:soon")
+async def cb_cat_soon(call: CallbackQuery):
+    await call.answer("🔜 Этот мир скоро откроется — квесты в разработке", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("cat:"))
+async def cb_category(call: CallbackQuery, state: FSMContext):
+    await state.clear()
+    category = call.data.split(":")[1]
+    quests = await client.get_quests(category, call.from_user.id)
+    title = _CATEGORY_TITLES.get(category, "Квесты")
     if not quests:
         await call.message.edit_text(
-            "Квестов для твоего уровня пока нет.", reply_markup=back_to_main()
+            f"{title}\n\nКвестов пока нет.", reply_markup=back_to_main()
         )
         await call.answer()
         return
     await call.message.edit_text(
-        f"⚔️ <b>Квесты</b> (уровень {level}):\n<i>{_LIST_HINT}</i>",
+        f"{title}\n<i>{_LIST_HINT}</i>",
         reply_markup=quest_list(quests),
         parse_mode="HTML",
     )

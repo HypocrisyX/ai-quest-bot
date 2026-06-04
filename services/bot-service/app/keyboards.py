@@ -12,6 +12,28 @@ def main_menu() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
+_CATEGORY_ICONS = {"text": "📝", "image": "🖼", "video": "🎬"}
+
+
+def category_menu(categories: list[dict]) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    for c in categories:
+        key, title, status = c["key"], c["title"], c["status"]
+        icon = _CATEGORY_ICONS.get(key, "📂")
+        if status == "completed":
+            kb.button(text=f"✅ {title}", callback_data=f"cat:{key}")
+        elif status == "unlocked":
+            label = f"{icon} {title} ({c['completed']}/{c['total']})"
+            kb.button(text=label, callback_data=f"cat:{key}")
+        elif status == "soon":
+            kb.button(text=f"🔜 {title} (скоро)", callback_data="cat:soon")
+        else:  # locked
+            kb.button(text=f"🔒 {title}", callback_data="cat:locked")
+    kb.button(text="🏠 Главное меню", callback_data="menu:main")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
 def quest_list(quests: list[dict]) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     type_icons = {"theory": "📖", "practice": "💻", "challenge": "🔥", "boss": "👹"}
@@ -26,7 +48,7 @@ def quest_list(quests: list[dict]) -> InlineKeyboardMarkup:
         else:  # unlocked
             icon = type_icons.get(q["type"], "❓")
             kb.button(text=f"{icon} {q['title']}", callback_data=f"quest:detail:{q['id']}")
-    kb.button(text="◀️ Назад", callback_data="menu:main")
+    kb.button(text="◀️ К категориям", callback_data="menu:quests")
     kb.adjust(1)
     return kb.as_markup()
 

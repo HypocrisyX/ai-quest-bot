@@ -35,23 +35,39 @@ async def get_quests_for_level(
     return list(result.scalars())
 
 
-async def get_quests_with_status(
-    session: AsyncSession, user_level: int, user_id: int
-) -> list[dict]:
-    """Quests for a level, each tagged with sequential-unlock status.
+# Category "worlds" in unlock order — like RPG locations.
+CATEGORY_ORDER = [
+    ("text", "Текстовые промпты"),
+    ("image", "Генерация изображений"),
+    ("video", "Генерация видео"),
+]
 
-    Walking quests in order_index order: completed quests stay 'completed',
-    the first not-yet-completed quest is 'unlocked', everything after is 'locked'.
-    """
-    quests = await get_quests_for_level(session, user_level)
 
-    completed_result = await session.execute(
+async def _completed_quest_ids(session: AsyncSession, user_id: int) -> set[int]:
+    result = await session.execute(
         select(UserQuestProgress.quest_id).where(
             UserQuestProgress.user_id == user_id,
             UserQuestProgress.status == "completed",
         )
     )
-    completed_ids = set(completed_result.scalars())
+    return set(result.scalars())
+
+
+async def get_quests_with_status(
+    session: AsyncSession, category: str, user_id: int
+) -> list[dict]:
+    """Quests in a category, each tagged with sequential-unlock status.
+
+    Walking quests in order_index order: completed quests stay 'completed',
+    the first not-yet-completed quest is 'unlocked', everything after is 'locked'.
+    """
+    result = await session.execute(
+        select(Quest)
+        .where(Quest.category == category, Quest.is_active)
+        .order_by(Quest.order_index)
+    )
+    quests = list(result.scalars())
+    completed_ids = await _completed_quest_ids(session, user_id)
 
     items: list[dict] = []
     unlock_next = True
@@ -64,6 +80,46 @@ async def get_quests_with_status(
         else:
             status = "locked"
         items.append({"quest": quest, "status": status})
+    return items
+
+
+async def get_categories_with_status(
+    session: AsyncSession, user_id: int
+) -> list[dict]:
+    """Category 'worlds' with sequential unlock: a category opens only once
+    every quest in the previous category is completed.
+
+    status: 'completed' (all done) | 'unlocked' (open, in progress) |
+            'locked' (previous not finished) | 'soon' (open slot, no quests yet)
+    """
+    completed_ids = await _completed_quest_ids(session, user_id)
+
+    items: list[dict] = []
+    prev_fully_done = True  # first category is always open
+    for key, title in CATEGORY_ORDER:
+        ids_result = await session.execute(
+            select(Quest.id).where(Quest.category == key, Quest.is_active)
+        )
+        ids = list(ids_result.scalars())
+        total = len(ids)
+        done = sum(1 for qid in ids if qid in completed_ids)
+
+        if not prev_fully_done:
+            status = "locked"
+        elif total == 0:
+            status = "soon"  # reachable, but no content yet (e.g. video)
+        elif done >= total:
+            status = "completed"
+        else:
+            status = "unlocked"
+
+        items.append({
+            "key": key, "title": title, "status": status,
+            "total": total, "completed": done,
+        })
+        # next world unlocks only when this one is fully cleared
+        prev_fully_done = prev_fully_done and total > 0 and done >= total
+
     return items
 
 

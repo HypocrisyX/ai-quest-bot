@@ -67,6 +67,15 @@ class QuestListItemOut(QuestOut):
     status: str
 
 
+class CategoryOut(BaseModel):
+    key: str            # text / image / video
+    title: str
+    # unlocked | completed | locked (prev unfinished) | soon (no quests yet)
+    status: str
+    total: int
+    completed: int
+
+
 class QuestProgressOut(BaseModel):
     id: int
     user_id: int

@@ -175,12 +175,12 @@ async def test_get_quest_detail_with_criteria_and_hints(db):
 
 # ── get_quests_with_status (sequential unlock) ────────────────────────────────
 
-async def _seed_three_quests(db) -> list[Quest]:
+async def _seed_three_quests(db, category: str = "text") -> list[Quest]:
     await _seed_level(db, 1)
     quests = []
     for i in range(1, 4):
         q = Quest(
-            level_min=1, type="practice", title=f"Quest {i}",
+            level_min=1, type="practice", category=category, title=f"Quest {i}",
             instructions="Do it.", xp_reward=50, order_index=i, is_active=True,
         )
         db.add(q)
@@ -191,7 +191,7 @@ async def _seed_three_quests(db) -> list[Quest]:
 
 async def test_status_first_unlocked_rest_locked(db):
     await _seed_three_quests(db)
-    items = await repo.get_quests_with_status(db, user_level=1, user_id=1)
+    items = await repo.get_quests_with_status(db, category="text", user_id=1)
     statuses = [it["status"] for it in items]
     assert statuses == ["unlocked", "locked", "locked"]
 
@@ -201,7 +201,7 @@ async def test_status_unlocks_next_after_completion(db):
     await repo.start_quest(db, user_id=2, quest_id=quests[0].id)
     await repo.complete_quest(db, user_id=2, quest_id=quests[0].id, score=100, xp_earned=50)
 
-    items = await repo.get_quests_with_status(db, user_level=1, user_id=2)
+    items = await repo.get_quests_with_status(db, category="text", user_id=2)
     statuses = [it["status"] for it in items]
     assert statuses == ["completed", "unlocked", "locked"]
 
@@ -212,6 +212,52 @@ async def test_status_all_completed(db):
         await repo.start_quest(db, user_id=3, quest_id=q.id)
         await repo.complete_quest(db, user_id=3, quest_id=q.id, score=100, xp_earned=50)
 
-    items = await repo.get_quests_with_status(db, user_level=1, user_id=3)
+    items = await repo.get_quests_with_status(db, category="text", user_id=3)
     statuses = [it["status"] for it in items]
     assert statuses == ["completed", "completed", "completed"]
+
+
+# ── get_categories_with_status (sequential worlds) ────────────────────────────
+
+async def test_categories_image_locked_until_text_done(db):
+    await _seed_three_quests(db, category="text")
+    img = Quest(
+        level_min=1, type="practice", category="image", title="Img 1",
+        instructions="Draw.", xp_reward=50, order_index=10, is_active=True,
+    )
+    db.add(img)
+    await db.flush()
+
+    cats = await repo.get_categories_with_status(db, user_id=50)
+    by_key = {c["key"]: c for c in cats}
+    assert by_key["text"]["status"] == "unlocked"
+    assert by_key["image"]["status"] == "locked"
+    assert by_key["video"]["status"] == "locked"
+
+
+async def test_categories_image_unlocks_after_all_text_done(db):
+    text_quests = await _seed_three_quests(db, category="text")
+    img = Quest(
+        level_min=1, type="practice", category="image", title="Img 1",
+        instructions="Draw.", xp_reward=50, order_index=10, is_active=True,
+    )
+    db.add(img)
+    await db.flush()
+
+    for q in text_quests:
+        await repo.start_quest(db, user_id=51, quest_id=q.id)
+        await repo.complete_quest(db, user_id=51, quest_id=q.id, score=100, xp_earned=50)
+
+    cats = await repo.get_categories_with_status(db, user_id=51)
+    by_key = {c["key"]: c for c in cats}
+    assert by_key["text"]["status"] == "completed"
+    assert by_key["image"]["status"] == "unlocked"
+    assert by_key["video"]["status"] == "locked"
+
+
+async def test_categories_video_soon_when_empty_and_reachable(db):
+    # No quests at all → text is empty/soon, nothing after unlocks.
+    cats = await repo.get_categories_with_status(db, user_id=52)
+    by_key = {c["key"]: c for c in cats}
+    assert by_key["text"]["status"] == "soon"
+    assert by_key["image"]["status"] == "locked"

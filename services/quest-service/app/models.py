@@ -33,6 +33,7 @@ class Quest(Base):
     level_min = Column(SmallInteger, ForeignKey("game_levels.level"), nullable=False)
     level_max = Column(SmallInteger)
     type = Column(String(16), nullable=False)  # theory, practice, challenge, boss
+    category = Column(String(16), nullable=False, server_default="text")  # text, image, video
     title = Column(String(128), nullable=False)
     description = Column(Text)
     instructions = Column(Text, nullable=False)

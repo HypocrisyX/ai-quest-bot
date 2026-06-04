@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import repository as repo
 from .database import get_db
 from .schemas import (
+    CategoryOut,
     CompleteQuestRequest,
     DailyQuestOut,
     QuestDetailOut,
@@ -22,13 +23,22 @@ router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]
 
 
-@router.get("/quests", response_model=list[QuestListItemOut])
-async def list_quests(
-    level: int = Query(..., ge=1),
+@router.get("/categories", response_model=list[CategoryOut])
+async def list_categories(
     user_id: int = Query(..., description="for sequential-unlock status"),
     db: DB = None,
 ):
-    items = await repo.get_quests_with_status(db, level, user_id)
+    items = await repo.get_categories_with_status(db, user_id)
+    return [CategoryOut(**it) for it in items]
+
+
+@router.get("/quests", response_model=list[QuestListItemOut])
+async def list_quests(
+    category: str = Query("text", description="quest world: text/image/video"),
+    user_id: int = Query(..., description="for sequential-unlock status"),
+    db: DB = None,
+):
+    items = await repo.get_quests_with_status(db, category, user_id)
     return [
         QuestListItemOut(**QuestOut.model_validate(it["quest"]).model_dump(), status=it["status"])
         for it in items
