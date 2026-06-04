@@ -176,8 +176,10 @@ async def handle_answer(message: Message, state: FSMContext):
                 xp_result["level_before"],
                 xp_result["level_after"],
             )
-        if quest.get("crystal_reward"):
-            result_text += f"\n💎 +{quest['crystal_reward']} кристаллов"
+        crystal_reward = quest.get("crystal_reward") or 0
+        if crystal_reward > 0:
+            await client.add_crystals(user_id, crystal_reward, "quest_complete")
+            result_text += f"\n💎 +{crystal_reward} кристаллов"
 
         streak_days = streak_result.get("streak_days", 0)
         if streak_days in STREAK_MILESTONES:

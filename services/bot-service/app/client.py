@@ -71,6 +71,14 @@ async def update_streak(user_id: int) -> dict:
     return await _post(f"{USER_SVC}/users/{user_id}/streak", {})
 
 
+async def add_crystals(user_id: int, amount: int, reason: str) -> dict:
+    return await _post(f"{USER_SVC}/users/{user_id}/crystals", {
+        "user_id": user_id,
+        "delta": amount,
+        "reason": reason,
+    })
+
+
 async def spend_crystals(user_id: int, amount: int, reason: str) -> dict:
     return await _post(f"{USER_SVC}/users/{user_id}/crystals", {
         "user_id": user_id,
