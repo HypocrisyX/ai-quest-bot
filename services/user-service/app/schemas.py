@@ -114,6 +114,17 @@ class ShopItemOut(BaseModel):
     can_afford: bool
 
 
+class DuelApplyRequest(BaseModel):
+    challenger_id: int
+    opponent_id: int
+    winner_id: Optional[int] = None  # None = tie
+
+
+class DuelApplyResponse(BaseModel):
+    challenger: dict
+    opponent: dict
+
+
 class PurchaseRequest(BaseModel):
     user_id: int
     item_key: str

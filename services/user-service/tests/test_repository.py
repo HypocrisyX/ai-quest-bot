@@ -107,6 +107,50 @@ async def test_add_crystals_floor_zero(db):
     assert result.balance_after == 0
 
 
+# ── duels (ELO + rewards) ─────────────────────────────────────────────────────
+
+async def test_duel_tie_equal_ratings_no_elo_change(db):
+    await _make_user(db, 80)
+    await _make_user(db, 81)
+    result = await repo.apply_duel_result(db, 80, 81, winner_id=None)
+    assert result["challenger"]["elo_delta"] == 0
+    assert result["opponent"]["elo_delta"] == 0
+    assert result["challenger"]["crystals"] == repo.DUEL_CRYSTALS_TIE
+    assert result["opponent"]["crystals"] == repo.DUEL_CRYSTALS_TIE
+
+
+async def test_duel_win_is_zero_sum(db):
+    await _make_user(db, 82)
+    await _make_user(db, 83)
+    result = await repo.apply_duel_result(db, 82, 83, winner_id=82)
+    # Equal starting ratings → winner +16, loser -16 with K=32
+    assert result["challenger"]["elo_delta"] == 16
+    assert result["opponent"]["elo_delta"] == -16
+    assert result["challenger"]["crystals"] == repo.DUEL_CRYSTALS_WIN
+    assert result["opponent"]["crystals"] == 0
+
+
+async def test_duel_winner_gains_loser_loses_rating(db):
+    await _make_user(db, 84)
+    await _make_user(db, 85)
+    await repo.apply_duel_result(db, 84, 85, winner_id=85)  # opponent wins
+    ch = await repo.get_user_stats(db, 84)
+    op = await repo.get_user_stats(db, 85)
+    assert op.elo_rating > 1000
+    assert ch.elo_rating < 1000
+
+
+async def test_duel_elo_floor(db):
+    await _make_user(db, 86)
+    await _make_user(db, 87)
+    stats = await repo.get_user_stats(db, 86)
+    stats.elo_rating = repo.ELO_MIN  # already at floor
+    await db.flush()
+    await repo.apply_duel_result(db, 86, 87, winner_id=87)  # challenger loses
+    ch = await repo.get_user_stats(db, 86)
+    assert ch.elo_rating >= repo.ELO_MIN
+
+
 # ── shop + xp boost ───────────────────────────────────────────────────────────
 
 async def test_purchase_xp_boost_grants_charges(db):

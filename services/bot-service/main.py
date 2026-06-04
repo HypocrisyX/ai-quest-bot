@@ -11,6 +11,7 @@ from app.events import close as close_events
 from app.handlers import (
     achievements,
     daily,
+    duels,
     leaderboard,
     myquests,
     profile,
@@ -68,6 +69,8 @@ async def main() -> None:
     storage = RedisStorage.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
     dp = Dispatcher(storage=storage)
 
+    # duels first: its deep-link /start handler must win over the plain one.
+    dp.include_router(duels.router)
     dp.include_router(start.router)
     dp.include_router(profile.router)
     dp.include_router(quests.router)

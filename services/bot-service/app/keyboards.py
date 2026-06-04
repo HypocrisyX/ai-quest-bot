@@ -8,6 +8,7 @@ def main_menu() -> InlineKeyboardMarkup:
     kb.button(text="📜 Мои квесты", callback_data="menu:myquests")
     kb.button(text="🛒 Магазин", callback_data="menu:shop")
     kb.button(text="🏅 Достижения", callback_data="menu:achievements")
+    kb.button(text="⚔️ Дуэль", callback_data="menu:duels")
     kb.button(text="📅 Ежедневный", callback_data="menu:daily")
     kb.button(text="👤 Профиль", callback_data="menu:profile")
     kb.button(text="🏆 Топ", callback_data="menu:leaderboard")
@@ -100,4 +101,26 @@ def cancel() -> InlineKeyboardMarkup:
 def back_to_main() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="🏠 Главное меню", callback_data="menu:main")
+    return kb.as_markup()
+
+
+def duel_quest_list(quests: list[dict]) -> InlineKeyboardMarkup:
+    """Quests the challenger can pick for a duel (locked ones excluded)."""
+    kb = InlineKeyboardBuilder()
+    type_icons = {"theory": "📖", "practice": "💻", "challenge": "🔥", "boss": "👹"}
+    for q in quests:
+        if q.get("status") == "locked":
+            continue
+        icon = type_icons.get(q["type"], "❓")
+        kb.button(text=f"{icon} {q['title']}", callback_data=f"duel:quest:{q['id']}")
+    kb.button(text="🏠 Главное меню", callback_data="menu:main")
+    kb.adjust(1)
+    return kb.as_markup()
+
+
+def duel_challenge(code: str) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    kb.button(text="⚔️ Принять вызов", callback_data=f"duel:accept:{code}")
+    kb.button(text="🏠 Главное меню", callback_data="menu:main")
+    kb.adjust(1)
     return kb.as_markup()

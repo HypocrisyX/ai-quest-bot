@@ -143,6 +143,63 @@ async def add_crystals(
     )
 
 
+# ── Duels (ELO + rewards) ─────────────────────────────────────────────────────
+
+ELO_K = 32
+ELO_MIN = 100
+DUEL_CRYSTALS_WIN = 15
+DUEL_CRYSTALS_TIE = 5
+
+
+def _elo_delta(rating: int, opponent_rating: int, score: float) -> int:
+    """Standard Elo delta. score: 1 win / 0.5 tie / 0 loss."""
+    expected = 1 / (1 + 10 ** ((opponent_rating - rating) / 400))
+    return round(ELO_K * (score - expected))
+
+
+async def apply_duel_result(
+    session: AsyncSession,
+    challenger_id: int,
+    opponent_id: int,
+    winner_id: Optional[int],
+) -> dict:
+    """Update both players' ELO + crystals for a finished duel.
+
+    winner_id None means a tie. Returns per-player deltas for display.
+    """
+    ch = await get_user_stats(session, challenger_id)
+    op = await get_user_stats(session, opponent_id)
+
+    if winner_id is None:
+        ch_score, op_score = 0.5, 0.5
+    elif winner_id == challenger_id:
+        ch_score, op_score = 1.0, 0.0
+    else:
+        ch_score, op_score = 0.0, 1.0
+
+    ch_elo = _elo_delta(ch.elo_rating, op.elo_rating, ch_score)
+    op_elo = _elo_delta(op.elo_rating, ch.elo_rating, op_score)
+    ch.elo_rating = max(ELO_MIN, ch.elo_rating + ch_elo)
+    op.elo_rating = max(ELO_MIN, op.elo_rating + op_elo)
+
+    def _reward(is_winner: bool, is_tie: bool) -> int:
+        if is_tie:
+            return DUEL_CRYSTALS_TIE
+        return DUEL_CRYSTALS_WIN if is_winner else 0
+
+    is_tie = winner_id is None
+    ch_crystals = _reward(winner_id == challenger_id, is_tie)
+    op_crystals = _reward(winner_id == opponent_id, is_tie)
+    ch.crystals += ch_crystals
+    op.crystals += op_crystals
+
+    await session.flush()
+    return {
+        "challenger": {"elo_delta": ch_elo, "crystals": ch_crystals, "elo_after": ch.elo_rating},
+        "opponent": {"elo_delta": op_elo, "crystals": op_crystals, "elo_after": op.elo_rating},
+    }
+
+
 # ── Shop ──────────────────────────────────────────────────────────────────────
 # Catalog lives in code. Only "xp_boost" is functional; the rest are placeholders
 # (available=False) to be filled in later.

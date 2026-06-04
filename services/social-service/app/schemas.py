@@ -6,30 +6,48 @@ from pydantic import BaseModel
 
 class DuelCreate(BaseModel):
     challenger_id: int
-    opponent_id: int
     quest_id: int
+    challenger_score: int
+    challenger_answer: str
 
 
 class DuelOut(BaseModel):
     id: int
+    code: str
     challenger_id: int
-    opponent_id: int
+    opponent_id: Optional[int]
     quest_id: int
     status: str
     challenger_score: Optional[int]
     opponent_score: Optional[int]
     winner_id: Optional[int]
-    elo_delta: Optional[int]
     created_at: datetime
     finished_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
 
 
-class DuelFinishRequest(BaseModel):
+class DuelCreatedOut(BaseModel):
+    id: int
+    code: str
+    quest_id: int
+
+
+class DuelAcceptRequest(BaseModel):
+    opponent_id: int
+    opponent_score: int
+    opponent_answer: str
+
+
+class DuelResolutionOut(BaseModel):
     duel_id: int
+    quest_id: int
+    challenger_id: int
+    opponent_id: int
     challenger_score: int
     opponent_score: int
+    winner_id: Optional[int]   # None = tie
+    is_tie: bool
 
 
 class LeaderboardEntryOut(BaseModel):

@@ -1,4 +1,4 @@
-from sqlalchemy import TIMESTAMP, BigInteger, Column, Date, Integer, SmallInteger, String
+from sqlalchemy import TIMESTAMP, BigInteger, Column, Date, Integer, SmallInteger, String, Text
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -8,14 +8,17 @@ class Duel(Base):
     __tablename__ = "duels"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
+    code = Column(String(16), unique=True, nullable=False)  # invite-link token
     challenger_id = Column(BigInteger, nullable=False)
-    opponent_id = Column(BigInteger, nullable=False)
+    opponent_id = Column(BigInteger)  # NULL until someone accepts the invite
     quest_id = Column(Integer, nullable=False)
     status = Column(String(16), default="pending")  # pending, active, finished, expired
     challenger_score = Column(SmallInteger)
     opponent_score = Column(SmallInteger)
+    challenger_answer = Column(Text)   # stored for later AI re-scoring
+    opponent_answer = Column(Text)
     winner_id = Column(BigInteger)
-    elo_delta = Column(SmallInteger)
+    elo_delta = Column(SmallInteger)   # challenger's ELO delta (record)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     finished_at = Column(TIMESTAMP(timezone=True))
 

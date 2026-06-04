@@ -10,6 +10,8 @@ from .schemas import (
     AddCrystalsResponse,
     AddXpRequest,
     AddXpResponse,
+    DuelApplyRequest,
+    DuelApplyResponse,
     EarnedAchievementOut,
     GrantedAchievementOut,
     PurchaseRequest,
@@ -69,6 +71,14 @@ async def add_crystals(user_id: int, data: AddCrystalsRequest, db: DB):
 async def update_streak(user_id: int, db: DB):
     streak = await repo.update_streak(db, user_id)
     return {"streak_days": streak}
+
+
+@router.post("/duels/apply", response_model=DuelApplyResponse)
+async def apply_duel(data: DuelApplyRequest, db: DB):
+    result = await repo.apply_duel_result(
+        db, data.challenger_id, data.opponent_id, data.winner_id
+    )
+    return DuelApplyResponse(**result)
 
 
 @router.get("/users/{user_id}/shop", response_model=list[ShopItemOut])

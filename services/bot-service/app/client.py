@@ -211,3 +211,37 @@ async def get_leaderboard(period: str = "week") -> dict:
         "period": period,
         "period_start": date.today().isoformat(),
     })
+
+
+async def create_duel(challenger_id: int, quest_id: int, score: int, answer: str) -> dict:
+    return await _post(f"{SOCIAL_SVC}/duels", {
+        "challenger_id": challenger_id,
+        "quest_id": quest_id,
+        "challenger_score": score,
+        "challenger_answer": answer,
+    })
+
+
+async def get_duel_by_code(code: str) -> Optional[dict]:
+    try:
+        return await _get(f"{SOCIAL_SVC}/duels/code/{code}")
+    except aiohttp.ClientResponseError:
+        return None
+
+
+async def accept_duel(code: str, opponent_id: int, score: int, answer: str) -> dict:
+    """Returns the resolution. Raises ClientResponseError(409) on conflict."""
+    async with get_session().post(
+        f"{SOCIAL_SVC}/duels/{code}/accept",
+        json={"opponent_id": opponent_id, "opponent_score": score, "opponent_answer": answer},
+    ) as r:
+        r.raise_for_status()
+        return await r.json()
+
+
+async def apply_duel_result(challenger_id: int, opponent_id: int, winner_id: Optional[int]) -> dict:
+    return await _post(f"{USER_SVC}/duels/apply", {
+        "challenger_id": challenger_id,
+        "opponent_id": opponent_id,
+        "winner_id": winner_id,
+    })
