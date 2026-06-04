@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
@@ -14,6 +14,57 @@ from .models import (
     UserQuestProgress,
 )
 from .schemas import QuestCriterionOut, QuestDetailOut, QuestHintOut
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+async def admin_stats(session: AsyncSession) -> dict:
+    total_quests = await session.scalar(select(func.count()).select_from(Quest))
+    active_quests = await session.scalar(
+        select(func.count()).select_from(Quest).where(Quest.is_active)
+    )
+    total_completions = await session.scalar(
+        select(func.count()).select_from(UserQuestProgress).where(
+            UserQuestProgress.status == "completed"
+        )
+    )
+    return {
+        "total_quests": total_quests or 0,
+        "active_quests": active_quests or 0,
+        "total_completions": total_completions or 0,
+    }
+
+
+async def admin_list_quests(session: AsyncSession) -> list[dict]:
+    """All quests ordered by category+order_index, each with a completion count."""
+    completed = (
+        select(
+            UserQuestProgress.quest_id,
+            func.count().label("cnt"),
+        )
+        .where(UserQuestProgress.status == "completed")
+        .group_by(UserQuestProgress.quest_id)
+        .subquery()
+    )
+    result = await session.execute(
+        select(Quest, func.coalesce(completed.c.cnt, 0))
+        .outerjoin(completed, completed.c.quest_id == Quest.id)
+        .order_by(Quest.order_index)
+    )
+    cat_rank = {"text": 0, "image": 1, "video": 2}
+    items = [
+        {
+            "id": q.id,
+            "title": q.title,
+            "category": q.category,
+            "type": q.type,
+            "order_index": q.order_index,
+            "is_active": q.is_active,
+            "completions": cnt,
+        }
+        for q, cnt in result
+    ]
+    items.sort(key=lambda x: (cat_rank.get(x["category"], 99), x["order_index"]))
+    return items
 
 
 async def get_quest(session: AsyncSession, quest_id: int) -> Optional[Quest]:

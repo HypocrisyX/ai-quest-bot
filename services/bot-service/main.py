@@ -10,6 +10,7 @@ from app.client import close_session
 from app.events import close as close_events
 from app.handlers import (
     achievements,
+    admin,
     daily,
     duels,
     leaderboard,
@@ -77,6 +78,7 @@ async def main() -> None:
     dp.include_router(myquests.router)
     dp.include_router(shop.router)
     dp.include_router(achievements.router)
+    dp.include_router(admin.router)
     dp.include_router(leaderboard.router)
     dp.include_router(daily.router)
     dp.error.register(error_handler)

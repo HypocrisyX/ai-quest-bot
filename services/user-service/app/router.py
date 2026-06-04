@@ -30,6 +30,16 @@ router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]
 
 
+@router.get("/admin/stats")
+async def admin_stats(db: DB):
+    return await repo.admin_stats(db)
+
+
+@router.get("/admin/users")
+async def admin_users(db: DB, limit: int = 10, offset: int = 0):
+    return await repo.admin_list_users(db, limit, offset)
+
+
 @router.post("/users", response_model=UserOut, status_code=201)
 async def register_user(data: UserCreate, db: DB):
     user, _ = await repo.get_or_create_user(db, data)

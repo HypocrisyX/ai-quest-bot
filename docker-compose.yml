@@ -170,6 +170,8 @@ services:
       # TEST MODE: auto-approve quest answers without calling the AI judge.
       # Set to "true" (or remove) to restore real AI evaluation.
       AI_JUDGE_ENABLED: "false"
+      # Comma-separated Telegram IDs with access to the /admin panel.
+      ADMIN_IDS: ${ADMIN_IDS:-}
     depends_on:
       - redis
       - rabbitmq

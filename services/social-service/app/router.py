@@ -21,6 +21,11 @@ router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]
 
 
+@router.get("/admin/stats")
+async def admin_stats(db: DB):
+    return await repo.admin_stats(db)
+
+
 @router.post("/duels", response_model=DuelCreatedOut, status_code=201)
 async def create_duel(data: DuelCreate, db: DB):
     duel = await repo.create_duel(

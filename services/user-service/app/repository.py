@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import (
@@ -24,6 +24,48 @@ from .schemas import (
 async def get_user(session: AsyncSession, user_id: int) -> Optional[User]:
     result = await session.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+async def admin_stats(session: AsyncSession) -> dict:
+    total_users = await session.scalar(select(func.count()).select_from(User))
+    today = date.today()
+    active_today = await session.scalar(
+        select(func.count()).select_from(User).where(
+            func.date(User.last_active_at) == today
+        )
+    )
+    return {"total_users": total_users or 0, "active_today": active_today or 0}
+
+
+async def admin_list_users(
+    session: AsyncSession, limit: int = 10, offset: int = 0
+) -> dict:
+    total = await session.scalar(select(func.count()).select_from(User))
+    result = await session.execute(
+        select(User, UserStats)
+        .join(UserStats, UserStats.user_id == User.id)
+        .order_by(User.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    users = [
+        {
+            "id": u.id,
+            "username": u.username,
+            "first_name": u.first_name,
+            "level": s.level,
+            "xp": s.xp,
+            "crystals": s.crystals,
+            "elo_rating": s.elo_rating,
+            "total_quests": s.total_quests,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+            "last_active_at": u.last_active_at.isoformat() if u.last_active_at else None,
+        }
+        for u, s in result
+    ]
+    return {"total": total or 0, "users": users}
 
 
 async def get_or_create_user(

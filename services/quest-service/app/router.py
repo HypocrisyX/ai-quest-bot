@@ -24,6 +24,16 @@ router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]
 
 
+@router.get("/admin/stats")
+async def admin_stats(db: DB = None):
+    return await repo.admin_stats(db)
+
+
+@router.get("/admin/quests")
+async def admin_quests(db: DB = None):
+    return await repo.admin_list_quests(db)
+
+
 @router.get("/categories", response_model=list[CategoryOut])
 async def list_categories(
     user_id: int = Query(..., description="for sequential-unlock status"),

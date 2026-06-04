@@ -2,11 +2,19 @@ import secrets
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Duel, Follow, LeaderboardEntry
+
+
+async def admin_stats(session: AsyncSession) -> dict:
+    total = await session.scalar(select(func.count()).select_from(Duel))
+    finished = await session.scalar(
+        select(func.count()).select_from(Duel).where(Duel.status == "finished")
+    )
+    return {"total_duels": total or 0, "finished_duels": finished or 0}
 
 
 def _gen_code() -> str:

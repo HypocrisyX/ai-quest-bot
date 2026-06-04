@@ -59,6 +59,28 @@ async def get_profile(user_id: int) -> dict:
     return await _get(f"{USER_SVC}/users/{user_id}/profile")
 
 
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+async def admin_user_stats() -> dict:
+    return await _get(f"{USER_SVC}/admin/stats")
+
+
+async def admin_users(limit: int = 10, offset: int = 0) -> dict:
+    return await _get(f"{USER_SVC}/admin/users", params={"limit": limit, "offset": offset})
+
+
+async def admin_quest_stats() -> dict:
+    return await _get(f"{QUEST_SVC}/admin/stats")
+
+
+async def admin_quests() -> list[dict]:
+    return await _get(f"{QUEST_SVC}/admin/quests")
+
+
+async def admin_duel_stats() -> dict:
+    return await _get(f"{SOCIAL_SVC}/admin/stats")
+
+
 async def get_achievements(user_id: int) -> list[dict]:
     return await _get(f"{USER_SVC}/users/{user_id}/achievements")
 
