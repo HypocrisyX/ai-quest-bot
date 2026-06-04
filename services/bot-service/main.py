@@ -21,7 +21,7 @@ async def health_handler(request: web.Request) -> web.Response:
     return web.json_response({"status": "ok", "service": "bot-service"})
 
 
-async def run_health_server() -> None:
+async def run_health_server() -> web.AppRunner:
     app = web.Application()
     app.router.add_get("/health", health_handler)
     runner = web.AppRunner(app)
@@ -29,12 +29,16 @@ async def run_health_server() -> None:
     site = web.TCPSite(runner, "0.0.0.0", 8080)
     await site.start()
     logger.info("Health server running on :8080")
+    return runner
 
 
 async def main() -> None:
-    await run_health_server()
+    runner = await run_health_server()
 
-    bot = Bot(token=os.environ["TELEGRAM_BOT_TOKEN"])
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is not set")
+    bot = Bot(token=token)
     storage = RedisStorage.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
     dp = Dispatcher(storage=storage)
 
@@ -50,6 +54,7 @@ async def main() -> None:
         await close_session()
         await close_events()
         await bot.session.close()
+        await runner.cleanup()
 
 
 if __name__ == "__main__":
