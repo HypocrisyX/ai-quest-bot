@@ -76,6 +76,14 @@ class CategoryOut(BaseModel):
     completed: int
 
 
+class CompletedQuestOut(BaseModel):
+    quest_id: int
+    title: str
+    category: str
+    best_score: Optional[int]
+    completed_at: Optional[datetime]
+
+
 class QuestProgressOut(BaseModel):
     id: int
     user_id: int

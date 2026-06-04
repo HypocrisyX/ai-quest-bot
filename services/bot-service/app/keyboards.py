@@ -5,10 +5,27 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def main_menu() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="⚔️ Квесты", callback_data="menu:quests")
+    kb.button(text="📜 Мои квесты", callback_data="menu:myquests")
+    kb.button(text="🛒 Магазин", callback_data="menu:shop")
     kb.button(text="📅 Ежедневный", callback_data="menu:daily")
     kb.button(text="👤 Профиль", callback_data="menu:profile")
     kb.button(text="🏆 Топ", callback_data="menu:leaderboard")
     kb.adjust(2)
+    return kb.as_markup()
+
+
+def shop_menu(items: list[dict]) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    for it in items:
+        title, cost = it["title"], it["cost"]
+        if not it["available"]:
+            kb.button(text=f"🔜 {title}", callback_data="shop:soon")
+        elif not it["can_afford"]:
+            kb.button(text=f"🔒 {title} — {cost} 💎", callback_data="shop:poor")
+        else:
+            kb.button(text=f"{title} — {cost} 💎", callback_data=f"shop:buy:{it['key']}")
+    kb.button(text="🏠 Главное меню", callback_data="menu:main")
+    kb.adjust(1)
     return kb.as_markup()
 
 

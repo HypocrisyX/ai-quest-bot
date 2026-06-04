@@ -11,8 +11,11 @@ from .schemas import (
     AddCrystalsResponse,
     AddXpRequest,
     AddXpResponse,
+    PurchaseRequest,
+    PurchaseResponse,
     ReferralCreate,
     ReferralOut,
+    ShopItemOut,
     SubscriptionOut,
     UserCreate,
     UserOut,
@@ -65,6 +68,20 @@ async def add_crystals(user_id: int, data: AddCrystalsRequest, db: DB):
 async def update_streak(user_id: int, db: DB):
     streak = await repo.update_streak(db, user_id)
     return {"streak_days": streak}
+
+
+@router.get("/users/{user_id}/shop", response_model=list[ShopItemOut])
+async def get_shop(user_id: int, db: DB):
+    stats = await repo.get_user_stats(db, user_id)
+    if stats is None:
+        raise HTTPException(404, "User not found")
+    return repo.list_shop_items(stats.crystals)
+
+
+@router.post("/users/{user_id}/shop/purchase", response_model=PurchaseResponse)
+async def purchase(user_id: int, data: PurchaseRequest, db: DB):
+    ok, message, crystals_after = await repo.purchase_item(db, user_id, data.item_key)
+    return PurchaseResponse(ok=ok, message=message, crystals_after=crystals_after)
 
 
 @router.get("/users/{user_id}/subscription", response_model=SubscriptionOut | None)

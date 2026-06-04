@@ -8,6 +8,7 @@ from . import repository as repo
 from .database import get_db
 from .schemas import (
     CategoryOut,
+    CompletedQuestOut,
     CompleteQuestRequest,
     DailyQuestOut,
     QuestDetailOut,
@@ -30,6 +31,16 @@ async def list_categories(
 ):
     items = await repo.get_categories_with_status(db, user_id)
     return [CategoryOut(**it) for it in items]
+
+
+@router.get("/me/completed", response_model=list[CompletedQuestOut])
+async def my_completed(
+    user_id: int = Query(...),
+    limit: int = Query(50, le=200),
+    db: DB = None,
+):
+    items = await repo.get_completed_quests(db, user_id, limit)
+    return [CompletedQuestOut(**it) for it in items]
 
 
 @router.get("/quests", response_model=list[QuestListItemOut])

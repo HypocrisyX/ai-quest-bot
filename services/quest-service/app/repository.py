@@ -83,6 +83,35 @@ async def get_quests_with_status(
     return items
 
 
+async def get_completed_quests(
+    session: AsyncSession, user_id: int, limit: int = 50
+) -> list[dict]:
+    """Completed quests for a user, newest first, joined with quest title/category."""
+    result = await session.execute(
+        select(
+            Quest.id, Quest.title, Quest.category,
+            UserQuestProgress.best_score, UserQuestProgress.completed_at,
+        )
+        .join(UserQuestProgress, UserQuestProgress.quest_id == Quest.id)
+        .where(
+            UserQuestProgress.user_id == user_id,
+            UserQuestProgress.status == "completed",
+        )
+        .order_by(UserQuestProgress.completed_at.desc())
+        .limit(limit)
+    )
+    return [
+        {
+            "quest_id": row.id,
+            "title": row.title,
+            "category": row.category,
+            "best_score": row.best_score,
+            "completed_at": row.completed_at,
+        }
+        for row in result
+    ]
+
+
 async def get_categories_with_status(
     session: AsyncSession, user_id: int
 ) -> list[dict]:

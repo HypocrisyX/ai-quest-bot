@@ -33,6 +33,7 @@ class UserStatsOut(BaseModel):
     streak_last_at: Optional[date]
     total_quests: int
     class_title: str
+    xp_boost_quests: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -84,6 +85,26 @@ class AddXpResponse(BaseModel):
     xp_before: int
     xp_after: int
     leveled_up: bool
+
+
+class ShopItemOut(BaseModel):
+    key: str
+    title: str
+    description: str
+    cost: int
+    available: bool
+    can_afford: bool
+
+
+class PurchaseRequest(BaseModel):
+    user_id: int
+    item_key: str
+
+
+class PurchaseResponse(BaseModel):
+    ok: bool
+    message: str
+    crystals_after: int
 
 
 class AddCrystalsRequest(BaseModel):

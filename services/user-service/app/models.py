@@ -42,6 +42,7 @@ class UserStats(Base):
     streak_last_at = Column(Date)
     total_quests = Column(Integer, default=0)
     class_title = Column(String(32), default="Новичок")
+    xp_boost_quests = Column(Integer, nullable=False, server_default="0")  # remaining 2x-XP quests
 
 
 class Subscription(Base):

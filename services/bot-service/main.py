@@ -8,7 +8,7 @@ from aiogram.types import ErrorEvent
 from aiohttp import web
 from app.client import close_session
 from app.events import close as close_events
-from app.handlers import daily, leaderboard, profile, quests, start
+from app.handlers import daily, leaderboard, myquests, profile, quests, shop, start
 from app.keyboards import back_to_main
 
 logging.basicConfig(
@@ -62,6 +62,8 @@ async def main() -> None:
     dp.include_router(start.router)
     dp.include_router(profile.router)
     dp.include_router(quests.router)
+    dp.include_router(myquests.router)
+    dp.include_router(shop.router)
     dp.include_router(leaderboard.router)
     dp.include_router(daily.router)
     dp.error.register(error_handler)

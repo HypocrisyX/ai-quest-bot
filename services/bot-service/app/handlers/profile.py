@@ -21,7 +21,7 @@ _PROFILE_TPL = (
 def _render(profile: dict) -> str:
     u = profile["user"]
     s = profile["stats"]
-    return _PROFILE_TPL.format(
+    text = _PROFILE_TPL.format(
         name=u["first_name"],
         username=u.get("username") or "—",
         class_title=s["class_title"],
@@ -33,6 +33,10 @@ def _render(profile: dict) -> str:
         streak=s["streak_days"],
         total=s["total_quests"],
     )
+    boost = s.get("xp_boost_quests", 0)
+    if boost > 0:
+        text += f"\n⚡️ Буст ×2 XP: ещё <b>{boost}</b> квест(а)"
+    return text
 
 
 @router.message(Command("profile"))

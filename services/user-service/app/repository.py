@@ -79,6 +79,11 @@ async def add_xp(
     level_before = stats.level
     xp_before = stats.xp
 
+    # Apply an active 2x XP boost on quest completions, consuming one charge.
+    if reason == "quest_complete" and (stats.xp_boost_quests or 0) > 0:
+        delta_xp *= 2
+        stats.xp_boost_quests -= 1
+
     stats.xp += delta_xp
     leveled_up = False
 
@@ -136,6 +141,98 @@ async def add_crystals(
         balance_before=balance_before,
         balance_after=stats.crystals,
     )
+
+
+# ── Shop ──────────────────────────────────────────────────────────────────────
+# Catalog lives in code. Only "xp_boost" is functional; the rest are placeholders
+# (available=False) to be filled in later.
+
+XP_BOOST_QUESTS = 3  # number of 2x-XP quests granted per purchase
+
+SHOP_ITEMS = [
+    {
+        "key": "xp_boost",
+        "title": "⚡️ Буст XP ×2",
+        "description": f"Двойной XP за следующие {XP_BOOST_QUESTS} квеста",
+        "cost": 50,
+        "available": True,
+    },
+    {
+        "key": "streak_freeze",
+        "title": "🧊 Заморозка серии",
+        "description": "Скоро — сохранит серию при пропуске дня",
+        "cost": 80,
+        "available": False,
+    },
+    {
+        "key": "hint_pack",
+        "title": "💡 Набор подсказок",
+        "description": "Скоро — пакет бесплатных подсказок",
+        "cost": 60,
+        "available": False,
+    },
+    {
+        "key": "skip_quest",
+        "title": "⏭ Пропуск квеста",
+        "description": "Скоро — пропустить сложный квест",
+        "cost": 120,
+        "available": False,
+    },
+    {
+        "key": "custom_title",
+        "title": "🏷 Свой титул",
+        "description": "Скоро — кастомный титул в профиле",
+        "cost": 200,
+        "available": False,
+    },
+]
+
+_SHOP_BY_KEY = {item["key"]: item for item in SHOP_ITEMS}
+
+
+async def purchase_item(
+    session: AsyncSession, user_id: int, item_key: str
+) -> tuple[bool, str, int]:
+    """Returns (ok, message, crystals_after)."""
+    stats = await get_user_stats(session, user_id)
+    if stats is None:
+        return False, "Профиль не найден", 0
+
+    item = _SHOP_BY_KEY.get(item_key)
+    if item is None:
+        return False, "Товар не найден", stats.crystals
+    if not item["available"]:
+        return False, "Этот товар скоро появится", stats.crystals
+    if stats.crystals < item["cost"]:
+        return False, f"Недостаточно кристаллов (нужно {item['cost']} 💎)", stats.crystals
+
+    # Charge and apply effect.
+    stats.crystals -= item["cost"]
+    session.add(
+        CrystalTransaction(
+            user_id=user_id,
+            delta=-item["cost"],
+            reason="shop",
+            ref_id=item_key,
+            balance=stats.crystals,
+        )
+    )
+
+    if item_key == "xp_boost":
+        stats.xp_boost_quests = (stats.xp_boost_quests or 0) + XP_BOOST_QUESTS
+        msg = f"⚡️ Буст активирован! ×2 XP на следующие {XP_BOOST_QUESTS} квеста"
+    else:
+        msg = "Покупка совершена"
+
+    await session.flush()
+    return True, msg, stats.crystals
+
+
+def list_shop_items(crystals: int) -> list[dict]:
+    return [
+        {**item, "can_afford": crystals >= item["cost"]}
+        for item in SHOP_ITEMS
+    ]
 
 
 async def update_streak(session: AsyncSession, user_id: int) -> int:

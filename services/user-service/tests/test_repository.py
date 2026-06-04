@@ -107,6 +107,56 @@ async def test_add_crystals_floor_zero(db):
     assert result.balance_after == 0
 
 
+# ── shop + xp boost ───────────────────────────────────────────────────────────
+
+async def test_purchase_xp_boost_grants_charges(db):
+    await _make_user(db, 60)
+    await repo.add_crystals(db, 60, 100, "test")
+    ok, _, crystals_after = await repo.purchase_item(db, 60, "xp_boost")
+    assert ok is True
+    assert crystals_after == 50  # 100 - 50 cost
+    stats = await repo.get_user_stats(db, 60)
+    assert stats.xp_boost_quests == repo.XP_BOOST_QUESTS
+
+
+async def test_purchase_insufficient_crystals(db):
+    await _make_user(db, 61)
+    ok, msg, _ = await repo.purchase_item(db, 61, "xp_boost")
+    assert ok is False
+    assert "едостаточно" in msg
+
+
+async def test_purchase_unavailable_item(db):
+    await _make_user(db, 62)
+    await repo.add_crystals(db, 62, 500, "test")
+    ok, _, _ = await repo.purchase_item(db, 62, "streak_freeze")
+    assert ok is False
+
+
+async def test_xp_boost_doubles_quest_xp(db):
+    await _make_user(db, 63)
+    await repo.add_crystals(db, 63, 100, "test")
+    await repo.purchase_item(db, 63, "xp_boost")
+
+    result = await repo.add_xp(db, 63, 50, "quest_complete")
+    assert result.xp_after == 100  # 50 doubled
+
+    stats = await repo.get_user_stats(db, 63)
+    assert stats.xp_boost_quests == repo.XP_BOOST_QUESTS - 1
+
+
+async def test_xp_boost_not_applied_to_non_quest(db):
+    await _make_user(db, 64)
+    await repo.add_crystals(db, 64, 100, "test")
+    await repo.purchase_item(db, 64, "xp_boost")
+
+    # Non-quest reason should not consume or apply the boost.
+    result = await repo.add_xp(db, 64, 50, "referral")
+    assert result.xp_after == 50
+    stats = await repo.get_user_stats(db, 64)
+    assert stats.xp_boost_quests == repo.XP_BOOST_QUESTS
+
+
 # ── update_streak ─────────────────────────────────────────────────────────────
 
 async def test_streak_first_day(db):

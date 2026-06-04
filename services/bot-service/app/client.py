@@ -87,6 +87,17 @@ async def spend_crystals(user_id: int, amount: int, reason: str) -> dict:
     })
 
 
+async def get_shop(user_id: int) -> list[dict]:
+    return await _get(f"{USER_SVC}/users/{user_id}/shop")
+
+
+async def purchase_item(user_id: int, item_key: str) -> dict:
+    return await _post(f"{USER_SVC}/users/{user_id}/shop/purchase", {
+        "user_id": user_id,
+        "item_key": item_key,
+    })
+
+
 # ── Quest Service ─────────────────────────────────────────────────────────────
 
 async def get_categories(user_id: int) -> list[dict]:
@@ -95,6 +106,10 @@ async def get_categories(user_id: int) -> list[dict]:
 
 async def get_quests(category: str, user_id: int) -> list[dict]:
     return await _get(f"{QUEST_SVC}/quests", params={"category": category, "user_id": user_id})
+
+
+async def get_completed_quests(user_id: int, limit: int = 50) -> list[dict]:
+    return await _get(f"{QUEST_SVC}/me/completed", params={"user_id": user_id, "limit": limit})
 
 
 async def get_quest_detail(quest_id: int) -> dict:
