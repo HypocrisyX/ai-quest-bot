@@ -95,6 +95,7 @@ async def _process(message: aio_pika.IncomingMessage, bot: Bot) -> None:
                 await handler(bot, payload)
             except Exception:
                 logger.exception("Failed to handle event %s: %s", routing_key, payload)
+                raise
 
 
 async def start_consumer(bot: Bot) -> aio_pika.RobustConnection:

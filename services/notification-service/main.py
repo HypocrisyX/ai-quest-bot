@@ -22,7 +22,11 @@ logger = logging.getLogger("notification-service")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     bot = Bot(token=os.environ["TELEGRAM_BOT_TOKEN"])
-    connection = await start_consumer(bot)
+    try:
+        connection = await start_consumer(bot)
+    except Exception:
+        await bot.session.close()
+        raise
     yield
     await connection.close()
     await bot.session.close()
