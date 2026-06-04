@@ -66,8 +66,7 @@ async def get_subscription(user_id: int, db: DB):
 
 @router.get("/users/{user_id}/achievements", response_model=list[AchievementOut])
 async def get_achievements(user_id: int, db: DB):
-    await repo.get_user_achievements(db, user_id)
-    return []
+    return await repo.get_user_achievements(db, user_id)
 
 
 @router.post("/users/{user_id}/achievements/{code}", status_code=201)
