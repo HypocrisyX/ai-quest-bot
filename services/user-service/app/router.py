@@ -8,8 +8,7 @@ from .schemas import (
     AddCrystalsRequest, AddCrystalsResponse,
     AddXpRequest, AddXpResponse,
     AchievementOut, ReferralCreate, ReferralOut,
-    SubscriptionOut, UserAchievementOut, UserCreate,
-    UserOut, UserProfileOut, UserStatsOut,
+    SubscriptionOut, UserCreate, UserOut, UserProfileOut, UserStatsOut,
 )
 from . import repository as repo
 
@@ -19,9 +18,8 @@ DB = Annotated[AsyncSession, Depends(get_db)]
 
 @router.post("/users", response_model=UserOut, status_code=201)
 async def register_user(data: UserCreate, db: DB):
-    async with db.begin():
-        user, _ = await repo.get_or_create_user(db, data)
-        await repo.update_last_active(db, user.id)
+    user, _ = await repo.get_or_create_user(db, data)
+    await repo.update_last_active(db, user.id)
     return user
 
 
@@ -47,20 +45,17 @@ async def get_profile(user_id: int, db: DB):
 
 @router.post("/users/{user_id}/xp", response_model=AddXpResponse)
 async def add_xp(user_id: int, data: AddXpRequest, db: DB):
-    async with db.begin():
-        return await repo.add_xp(db, user_id, data.delta_xp, data.reason, data.ref_id)
+    return await repo.add_xp(db, user_id, data.delta_xp, data.reason, data.ref_id)
 
 
 @router.post("/users/{user_id}/crystals", response_model=AddCrystalsResponse)
 async def add_crystals(user_id: int, data: AddCrystalsRequest, db: DB):
-    async with db.begin():
-        return await repo.add_crystals(db, user_id, data.delta, data.reason, data.ref_id)
+    return await repo.add_crystals(db, user_id, data.delta, data.reason, data.ref_id)
 
 
 @router.post("/users/{user_id}/streak", response_model=dict)
 async def update_streak(user_id: int, db: DB):
-    async with db.begin():
-        streak = await repo.update_streak(db, user_id)
+    streak = await repo.update_streak(db, user_id)
     return {"streak_days": streak}
 
 
@@ -71,15 +66,13 @@ async def get_subscription(user_id: int, db: DB):
 
 @router.get("/users/{user_id}/achievements", response_model=list[AchievementOut])
 async def get_achievements(user_id: int, db: DB):
-    uas = await repo.get_user_achievements(db, user_id)
-    # load achievement objects via joined query — simplified here
+    await repo.get_user_achievements(db, user_id)
     return []
 
 
 @router.post("/users/{user_id}/achievements/{code}", status_code=201)
 async def grant_achievement(user_id: int, code: str, db: DB):
-    async with db.begin():
-        ua = await repo.grant_achievement(db, user_id, code)
+    ua = await repo.grant_achievement(db, user_id, code)
     if not ua:
         raise HTTPException(409, "Already granted or achievement not found")
     return {"granted": True}
@@ -87,8 +80,7 @@ async def grant_achievement(user_id: int, code: str, db: DB):
 
 @router.post("/referrals", response_model=ReferralOut, status_code=201)
 async def create_referral(data: ReferralCreate, db: DB):
-    async with db.begin():
-        referral = await repo.create_referral(db, data.referrer_id, data.referee_id)
+    referral = await repo.create_referral(db, data.referrer_id, data.referee_id)
     if not referral:
         raise HTTPException(409, "Referral already exists")
     return referral

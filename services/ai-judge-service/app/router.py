@@ -21,20 +21,19 @@ async def evaluate(data: EvaluateRequest, db: DB):
         user_input=data.user_input,
     )
 
-    async with db.begin():
-        evaluation = await repo.save_evaluation(
-            db,
-            user_id=data.user_id,
-            quest_id=data.quest_id,
-            attempt_num=data.attempt_num,
-            user_input=data.user_input,
-            ai_output=ai_output,
-            score=score,
-            feedback=feedback,
-            criteria_scores=[s.model_dump() for s in criteria_scores],
-            model_used="claude-sonnet-4-6",
-            tokens_used=tokens_used,
-        )
+    evaluation = await repo.save_evaluation(
+        db,
+        user_id=data.user_id,
+        quest_id=data.quest_id,
+        attempt_num=data.attempt_num,
+        user_input=data.user_input,
+        ai_output=ai_output,
+        score=score,
+        feedback=feedback,
+        criteria_scores=[s.model_dump() for s in criteria_scores],
+        model_used="claude-sonnet-4-6",
+        tokens_used=tokens_used,
+    )
 
     return EvaluationOut(
         id=evaluation.id,
