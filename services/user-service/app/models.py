@@ -35,7 +35,7 @@ class UserStats(Base):
     user_id = Column(BigInteger, ForeignKey("users.id"), primary_key=True)
     level = Column(SmallInteger, default=1)
     xp = Column(Integer, default=0)
-    xp_to_next = Column(Integer, default=100)
+    xp_to_next = Column(Integer, default=1100)
     crystals = Column(Integer, default=0)
     elo_rating = Column(Integer, default=1000)
     streak_days = Column(SmallInteger, default=0)

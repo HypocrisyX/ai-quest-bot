@@ -1,7 +1,6 @@
 """Seed script: game levels, quests, criteria, hints for quest-service DB."""
 import asyncio
 import os
-import sys
 
 import asyncpg
 
@@ -176,6 +175,310 @@ QUESTS = [
         ),
         None, 300, 50, 1800, 10,
     ),
+
+    # ── Level 1 — дополнительные промпты ─────────────────────────────────────
+
+    (
+        1, None, "theory",
+        "Задай правильный вопрос",
+        "Качество ответа зависит от качества вопроса.",
+        (
+            "Объясни своими словами:\n"
+            "1. Чем отличается открытый вопрос от закрытого?\n"
+            "2. Какой тип вопроса лучше использовать с AI и почему?\n"
+            "3. Приведи пример одной и той же темы в виде закрытого и открытого вопроса.\n\n"
+            "Отвечай без использования AI — это теория."
+        ),
+        None, 50, 0, None, 11,
+    ),
+    (
+        1, None, "practice",
+        "Вывод без воды",
+        "AI любит вступления и заключения — научись их убирать.",
+        (
+            "Попроси AI объяснить любую тему на твой выбор.\n\n"
+            "Сделай два запроса:\n"
+            "1. Обычный вопрос без ограничений.\n"
+            "2. Тот же вопрос, но добавь: «Отвечай без вступлений, заключений и фраз типа „конечно“, „разумеется“. Только суть.»\n\n"
+            "Скопируй оба промпта и сравни результаты."
+        ),
+        "ChatGPT / Claude / Gemini", 60, 0, None, 12,
+    ),
+    (
+        1, None, "practice",
+        "Смена аудитории",
+        "Один и тот же ответ AI даёт совершенно по-разному в зависимости от аудитории.",
+        (
+            "Выбери любую тему (например: «Как работает интернет»).\n\n"
+            "Попроси AI объяснить её:\n"
+            "1. Для ребёнка 7 лет\n"
+            "2. Для опытного инженера\n\n"
+            "В обоих промптах явно указывай аудиторию.\n"
+            "Скопируй оба промпта и ответы, сравни стиль и лексику."
+        ),
+        "ChatGPT / Claude / Gemini", 65, 0, None, 13,
+    ),
+    (
+        1, None, "practice",
+        "Пронумерованный список с обоснованием",
+        "Структурированный вывод помогает лучше усваивать информацию.",
+        (
+            "Попроси AI составить список из 5 пунктов на любую тему.\n\n"
+            "Требования:\n"
+            "• нумерованный список\n"
+            "• каждый пункт — название + 1-2 предложения обоснования, почему он в списке\n"
+            "• пункты отсортированы по важности (от важнейшего к менее важному)\n\n"
+            "Скопируй промпт и результат."
+        ),
+        "ChatGPT / Claude / Gemini", 65, 0, None, 14,
+    ),
+    (
+        1, None, "practice",
+        "Редактор текста",
+        "AI — отличный редактор, если правильно попросить.",
+        (
+            "Напиши любой небольшой текст (3-5 предложений) — о себе, о хобби, о чём угодно.\n\n"
+            "Попроси AI улучшить его по трём параметрам:\n"
+            "1. Ясность (убери лишнее)\n"
+            "2. Стиль (сделай живее)\n"
+            "3. Грамматика\n\n"
+            "Скопируй: свой исходный текст, промпт и улучшенный результат."
+        ),
+        "ChatGPT / Claude / Gemini", 70, 5, None, 15,
+    ),
+    (
+        1, None, "practice",
+        "Few-shot: обучение на примерах",
+        "Два-три примера часто стоят длинного объяснения.",
+        (
+            "Придумай или возьми паттерн из 2-3 примеров (например: трансформации текста, "
+            "классификации, перевода в определённый стиль).\n\n"
+            "Промпт должен содержать:\n"
+            "— Вход 1 → Выход 1\n"
+            "— Вход 2 → Выход 2\n"
+            "— Вход 3 → ?\n\n"
+            "Попроси AI продолжить паттерн. Скопируй промпт и ответ."
+        ),
+        "ChatGPT / Claude / Gemini", 75, 5, None, 16,
+    ),
+    (
+        1, None, "practice",
+        "Ограничение объёма",
+        "Краткость — сестра таланта. Умей управлять длиной ответа.",
+        (
+            "Задай AI один и тот же вопрос дважды:\n\n"
+            "1. Без ограничений.\n"
+            "2. С ограничением: «Ответь строго в 2-3 предложениях, без вводных слов».\n\n"
+            "Выбери тему, где ответ может быть как длинным, так и коротким "
+            "(например: «В чём польза спорта?» или «Как учить иностранные языки?»).\n\n"
+            "Скопируй оба ответа. В чём разница?"
+        ),
+        "ChatGPT / Claude / Gemini", 65, 0, None, 17,
+    ),
+    (
+        1, None, "practice",
+        "Суммаризация",
+        "AI отлично сжимает длинные тексты до сути.",
+        (
+            "Найди любой текст длиннее 200 слов (статья, Википедия, описание книги).\n\n"
+            "Попроси AI:\n"
+            "1. Дать краткое резюме в 3 предложениях\n"
+            "2. Выделить 5 ключевых тезисов маркированным списком\n"
+            "3. Назвать главную идею одним предложением\n\n"
+            "Всё это в одном промпте. Скопируй промпт и результат."
+        ),
+        "ChatGPT / Claude / Gemini", 70, 0, None, 18,
+    ),
+    (
+        1, None, "practice",
+        "Brainstorm: 10 идей",
+        "AI генерирует идеи быстро. Твоя задача — получить разнообразные, а не шаблонные.",
+        (
+            "Выбери тему для брейншторма (например: «идеи для подарка», «названия для приложения», "
+            "«способы заработать в интернете»).\n\n"
+            "Попроси AI сгенерировать 10 идей с требованиями:\n"
+            "• идеи должны быть разнообразными (не похожими друг на друга)\n"
+            "• каждая идея — название + 1 предложение объяснения\n"
+            "• избегать очевидных и шаблонных вариантов\n\n"
+            "Скопируй промпт и результат."
+        ),
+        "ChatGPT / Claude / Gemini", 70, 0, None, 19,
+    ),
+    (
+        1, None, "challenge",
+        "Контекст меняет ответ",
+        "Один вопрос — два совершенно разных ответа. Контекст решает всё.",
+        (
+            "Задай AI один вопрос в двух версиях:\n\n"
+            "Версия 1 — без контекста: просто вопрос.\n"
+            "Версия 2 — с контекстом: перед вопросом добавь 2-3 предложения о ситуации, "
+            "цели или ограничениях.\n\n"
+            "Пример темы: «Что мне делать?» (без контекста) vs "
+            "«Я студент 2-го курса, хочу найти подработку, есть 10 часов в неделю. Что мне делать?»\n\n"
+            "Скопируй оба промпта и ответы. Опиши, в чём принципиальная разница."
+        ),
+        "ChatGPT / Claude / Gemini", 85, 10, None, 20,
+    ),
+    (
+        1, None, "practice",
+        "Негативные инструкции",
+        "Иногда проще сказать что НЕ надо делать.",
+        (
+            "Попроси AI написать короткий текст (100-150 слов) на любую тему.\n\n"
+            "Добавь в промпт список запретов:\n"
+            "• не используй слово [выбери любое частое слово]\n"
+            "• не начинай предложения с «Это»\n"
+            "• не используй восклицательные знаки\n"
+            "• избегай клише и штампов\n\n"
+            "Скопируй промпт и проверь, выполнил ли AI все ограничения."
+        ),
+        "ChatGPT / Claude / Gemini", 65, 0, None, 21,
+    ),
+    (
+        1, None, "practice",
+        "Перефразирование и стили",
+        "Один смысл — разные слова. Управляй тоном и стилем.",
+        (
+            "Возьми любое короткое сообщение (2-4 предложения).\n"
+            "Например: деловое письмо, объявление, новостной заголовок.\n\n"
+            "Попроси AI переписать его в трёх стилях:\n"
+            "1. Официальный / деловой\n"
+            "2. Дружеский / разговорный\n"
+            "3. Юмористический\n\n"
+            "Всё в одном промпте. Скопируй исходный текст, промпт и три варианта."
+        ),
+        "ChatGPT / Claude / Gemini", 65, 0, None, 22,
+    ),
+    (
+        1, None, "theory",
+        "Факты и мнения",
+        "AI умеет отделять факты от суждений — но только если попросить.",
+        (
+            "Найди короткий текст (новостная заметка, отзыв, обзор — 100-200 слов).\n\n"
+            "Попроси AI:\n"
+            "1. Выделить все утверждения-факты (то, что можно проверить)\n"
+            "2. Выделить все мнения и суждения (то, что нельзя проверить однозначно)\n"
+            "3. Отметить, если есть манипулятивные формулировки\n\n"
+            "Скопируй текст, промпт и анализ AI."
+        ),
+        "ChatGPT / Claude / Gemini", 55, 0, None, 23,
+    ),
+    (
+        1, None, "practice",
+        "Декомпозиция задачи",
+        "Любую большую задачу AI поможет разбить на управляемые шаги.",
+        (
+            "Выбери любую сложную задачу или цель (например: «Запустить свой продукт», "
+            "«Выучить новый язык программирования», «Организовать мероприятие»).\n\n"
+            "Попроси AI:\n"
+            "1. Разбить задачу на этапы (5-7 шагов)\n"
+            "2. Для каждого шага — конкретное действие и ожидаемый результат\n"
+            "3. Указать возможные препятствия на каждом шаге\n\n"
+            "Скопируй задачу, промпт и план."
+        ),
+        "ChatGPT / Claude / Gemini", 75, 5, None, 24,
+    ),
+    (
+        1, None, "challenge",
+        "Создай квиз и пройди его",
+        "Проверь свои знания с помощью AI-квиза.",
+        (
+            "Выбери тему, которую ты изучал или хочешь проверить "
+            "(программирование, история, наука, AI-инструменты — что угодно).\n\n"
+            "Шаг 1: Попроси AI создать квиз из 5 вопросов по теме:\n"
+            "• разные типы вопросов (с выбором ответа, открытые, верно/неверно)\n"
+            "• сложность от лёгкой к сложной\n"
+            "• без ответов в тексте вопросов\n\n"
+            "Шаг 2: Ответь на все 5 вопросов.\n\n"
+            "Шаг 3: Попроси AI проверить твои ответы и дать объяснение.\n\n"
+            "Скопируй квиз, свои ответы и итог проверки."
+        ),
+        "ChatGPT / Claude / Gemini", 85, 10, 900, 25,
+    ),
+
+    # ── Level 2 — генерация изображений ──────────────────────────────────────
+    # Открываются после прохождения большинства квестов уровня 1 (~1100 XP)
+
+    (
+        2, None, "practice",
+        "Первая генерация изображения",
+        "Текстовый промпт — основа для AI-художника.",
+        (
+            "Открой любой инструмент для генерации изображений:\n"
+            "Midjourney, DALL-E (в ChatGPT), Stable Diffusion, Adobe Firefly, Ideogram и др.\n\n"
+            "Создай изображение с простым промптом (15-30 слов).\n"
+            "Включи:\n"
+            "• что изображено (субъект)\n"
+            "• где происходит (место/фон)\n"
+            "• освещение или время суток\n\n"
+            "Пример: «A cozy café at sunset, warm golden light, wooden tables, few people reading books»\n\n"
+            "Скопируй промпт и опиши результат: соответствует ли картинка задумке?"
+        ),
+        "Midjourney / DALL-E / Stable Diffusion", 80, 10, None, 26,
+    ),
+    (
+        2, None, "practice",
+        "Стиль и атмосфера",
+        "Добавь стилистические теги — и картинка преображается.",
+        (
+            "Возьми любой базовый промпт (можно из предыдущего квеста).\n\n"
+            "Сгенерируй одно и то же изображение с тремя разными стилями:\n"
+            "1. Реалистичная фотография: добавь «photorealistic, 8K, DSLR camera»\n"
+            "2. Живопись: добавь «oil painting, impressionist style, brush strokes»\n"
+            "3. Аниме/иллюстрация: добавь «anime style, Studio Ghibli, vibrant colors»\n\n"
+            "Скопируй все три промпта. Какой стиль понравился больше всего и почему?"
+        ),
+        "Midjourney / DALL-E / Stable Diffusion", 90, 10, None, 27,
+    ),
+    (
+        2, None, "practice",
+        "Negative prompts",
+        "Скажи AI что НЕ должно быть на картинке.",
+        (
+            "В инструментах типа Stable Diffusion и Midjourney (v6+) есть negative prompts — "
+            "слова, которые должны ОТСУТСТВОВАТЬ на изображении.\n\n"
+            "Попробуй:\n"
+            "1. Сгенерируй портрет человека без negative prompts.\n"
+            "2. Сгенерируй тот же портрет с negative prompts: "
+            "«blurry, distorted face, extra fingers, bad anatomy, watermark, text»\n\n"
+            "Скопируй оба промпта (основной + негативный). "
+            "Опиши разницу в качестве результата."
+        ),
+        "Stable Diffusion / Midjourney", 90, 10, None, 28,
+    ),
+    (
+        2, None, "practice",
+        "Параметры: соотношение сторон и детали",
+        "Aspect ratio и параметры качества меняют всё.",
+        (
+            "Исследуй параметры генерации в твоём инструменте.\n\n"
+            "Задание:\n"
+            "1. Сгенерируй одно изображение в трёх форматах:\n"
+            "   — квадрат (1:1)\n"
+            "   — портрет (2:3 или 9:16)\n"
+            "   — пейзаж (16:9 или 3:2)\n\n"
+            "2. Добавь параметры качества, которые поддерживает твой инструмент:\n"
+            "   (--quality 2, steps=30, cfg_scale=7 или аналоги)\n\n"
+            "Скопируй все промпты с параметрами. "
+            "Какой формат лучше подходит для твоего изображения?"
+        ),
+        "Midjourney / Stable Diffusion / DALL-E", 95, 15, None, 29,
+    ),
+    (
+        2, None, "challenge",
+        "Итерируй до результата",
+        "Профессиональные промпт-инженеры никогда не останавливаются на первой версии.",
+        (
+            "Выбери конкретный результат, который хочешь получить "
+            "(например: «логотип стартапа», «обложка книги», «арт для игры»).\n\n"
+            "Пройди минимум 3 итерации улучшения:\n"
+            "Итерация 1: базовый промпт → опиши что не так\n"
+            "Итерация 2: добавь детали стиля, освещения, ракурса → опиши улучшения\n"
+            "Итерация 3: уточни цвета, атмосферу, устрани артефакты → итоговый результат\n\n"
+            "Скопируй все три промпта и опиши что менял между итерациями и почему."
+        ),
+        "Midjourney / DALL-E / Stable Diffusion", 120, 20, 1200, 30,
+    ),
 ]
 
 # ── Criteria ──────────────────────────────────────────────────────────────────
@@ -278,45 +581,76 @@ HINTS = {
 # ── Seeding ───────────────────────────────────────────────────────────────────
 
 async def seed(conn: asyncpg.Connection) -> None:
-    # Check if already seeded
-    count = await conn.fetchval("SELECT COUNT(*) FROM quests")
-    if count > 0:
-        print(f"Already seeded ({count} quests). Skipping.")
-        return
+    """Idempotent seed: inserts missing quests, re-syncs criteria/hints.
 
-    print("Inserting game levels...")
+    Safe to run multiple times. Quests are matched by title — existing quests
+    keep their id (and user progress), new quests get appended. Criteria and
+    hints are cleared and re-inserted per quest so edits propagate.
+    """
+    print("Upserting game levels...")
     await conn.executemany(
         """
         INSERT INTO game_levels (level, title, xp_required, description, requires_sub, reward_crystals)
         VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT DO NOTHING
+        ON CONFLICT (level) DO UPDATE SET
+            title = EXCLUDED.title,
+            xp_required = EXCLUDED.xp_required,
+            description = EXCLUDED.description,
+            requires_sub = EXCLUDED.requires_sub,
+            reward_crystals = EXCLUDED.reward_crystals
         """,
         LEVELS,
     )
 
-    print("Inserting quests...")
+    print("Upserting quests (matched by title)...")
     quest_ids: dict[int, int] = {}  # order_index → quest.id
+    inserted, updated = 0, 0
     for q in QUESTS:
         (level_min, level_max, qtype, title, description, instructions,
          ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index) = q
 
-        quest_id = await conn.fetchval(
-            """
-            INSERT INTO quests
-              (level_min, level_max, type, title, description, instructions,
-               ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index, is_active)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true)
-            RETURNING id
-            """,
-            level_min, level_max, qtype, title, description, instructions,
-            ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index,
+        existing_id = await conn.fetchval(
+            "SELECT id FROM quests WHERE title = $1", title
         )
-        quest_ids[order_index] = quest_id
-        print(f"  Quest [{order_index}] '{title}' → id={quest_id}")
 
-    print("Inserting criteria...")
+        if existing_id is not None:
+            await conn.execute(
+                """
+                UPDATE quests SET
+                    level_min = $2, level_max = $3, type = $4, description = $5,
+                    instructions = $6, ai_tool = $7, xp_reward = $8,
+                    crystal_reward = $9, time_limit_sec = $10, order_index = $11,
+                    is_active = true
+                WHERE id = $1
+                """,
+                existing_id, level_min, level_max, qtype, description,
+                instructions, ai_tool, xp_reward, crystal_reward,
+                time_limit_sec, order_index,
+            )
+            quest_id = existing_id
+            updated += 1
+        else:
+            quest_id = await conn.fetchval(
+                """
+                INSERT INTO quests
+                  (level_min, level_max, type, title, description, instructions,
+                   ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index, is_active)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,true)
+                RETURNING id
+                """,
+                level_min, level_max, qtype, title, description, instructions,
+                ai_tool, xp_reward, crystal_reward, time_limit_sec, order_index,
+            )
+            inserted += 1
+
+        quest_ids[order_index] = quest_id
+
+    print(f"  Quests: {inserted} inserted, {updated} updated")
+
+    print("Re-syncing criteria...")
     for order_index, criteria in CRITERIA.items():
         quest_id = quest_ids[order_index]
+        await conn.execute("DELETE FROM quest_criteria WHERE quest_id = $1", quest_id)
         for criterion, weight, description in criteria:
             await conn.execute(
                 """
@@ -326,9 +660,14 @@ async def seed(conn: asyncpg.Connection) -> None:
                 quest_id, criterion, weight, description,
             )
 
-    print("Inserting hints...")
+    print("Inserting hints (only if quest has none — avoids FK clash with used hints)...")
     for order_index, hints in HINTS.items():
         quest_id = quest_ids[order_index]
+        has_hints = await conn.fetchval(
+            "SELECT EXISTS(SELECT 1 FROM quest_hints WHERE quest_id = $1)", quest_id
+        )
+        if has_hints:
+            continue
         for hint_order, cost, text in hints:
             await conn.execute(
                 """
@@ -338,7 +677,8 @@ async def seed(conn: asyncpg.Connection) -> None:
                 quest_id, hint_order, cost, text,
             )
 
-    print(f"\nDone! Inserted {len(QUESTS)} quests, levels 1–5.")
+    total = await conn.fetchval("SELECT COUNT(*) FROM quests")
+    print(f"\nDone! {total} quests total in DB.")
 
 
 async def main() -> None:

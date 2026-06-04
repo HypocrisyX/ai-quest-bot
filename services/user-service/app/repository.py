@@ -61,8 +61,11 @@ async def get_user_stats(session: AsyncSession, user_id: int) -> Optional[UserSt
     return result.scalar_one_or_none()
 
 
+_LEVEL_XP = {1: 1100, 2: 500, 3: 800, 4: 1200, 5: 2000}
+
+
 def _xp_to_next_level(level: int) -> int:
-    return 100 * level
+    return _LEVEL_XP.get(level, 300 * level)
 
 
 async def add_xp(

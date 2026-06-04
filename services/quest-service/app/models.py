@@ -36,7 +36,7 @@ class Quest(Base):
     title = Column(String(128), nullable=False)
     description = Column(Text)
     instructions = Column(Text, nullable=False)
-    ai_tool = Column(String(32))
+    ai_tool = Column(String(64))
     xp_reward = Column(Integer, default=50)
     crystal_reward = Column(Integer, default=0)
     time_limit_sec = Column(Integer)
