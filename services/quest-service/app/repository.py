@@ -35,6 +35,38 @@ async def get_quests_for_level(
     return list(result.scalars())
 
 
+async def get_quests_with_status(
+    session: AsyncSession, user_level: int, user_id: int
+) -> list[dict]:
+    """Quests for a level, each tagged with sequential-unlock status.
+
+    Walking quests in order_index order: completed quests stay 'completed',
+    the first not-yet-completed quest is 'unlocked', everything after is 'locked'.
+    """
+    quests = await get_quests_for_level(session, user_level)
+
+    completed_result = await session.execute(
+        select(UserQuestProgress.quest_id).where(
+            UserQuestProgress.user_id == user_id,
+            UserQuestProgress.status == "completed",
+        )
+    )
+    completed_ids = set(completed_result.scalars())
+
+    items: list[dict] = []
+    unlock_next = True
+    for quest in quests:
+        if quest.id in completed_ids:
+            status = "completed"
+        elif unlock_next:
+            status = "unlocked"
+            unlock_next = False  # lock everything after the first open quest
+        else:
+            status = "locked"
+        items.append({"quest": quest, "status": status})
+    return items
+
+
 async def get_quest_criteria(
     session: AsyncSession, quest_id: int
 ) -> list[QuestCriterion]:

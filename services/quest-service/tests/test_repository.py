@@ -1,9 +1,7 @@
 """Tests for quest-service repository — core quest flow."""
-import pytest
 
 from app import repository as repo
 from app.models import GameLevel, Quest, QuestCriterion, QuestHint
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -96,7 +94,9 @@ async def test_start_quest_retry_increments_attempts(db):
 async def test_complete_quest(db):
     quest = await _seed_quest(db)
     await repo.start_quest(db, user_id=300, quest_id=quest.id)
-    progress = await repo.complete_quest(db, user_id=300, quest_id=quest.id, score=85, xp_earned=100)
+    progress = await repo.complete_quest(
+        db, user_id=300, quest_id=quest.id, score=85, xp_earned=100
+    )
     assert progress.status == "completed"
     assert progress.best_score == 85
     assert progress.xp_earned == 100
@@ -109,7 +109,9 @@ async def test_complete_quest_updates_best_score(db):
     await repo.complete_quest(db, user_id=400, quest_id=quest.id, score=60, xp_earned=80)
     # Retry with better score
     await repo.start_quest(db, user_id=400, quest_id=quest.id)
-    progress = await repo.complete_quest(db, user_id=400, quest_id=quest.id, score=90, xp_earned=100)
+    progress = await repo.complete_quest(
+        db, user_id=400, quest_id=quest.id, score=90, xp_earned=100
+    )
     assert progress.best_score == 90
 
 
@@ -169,3 +171,47 @@ async def test_get_quest_detail_with_criteria_and_hints(db):
     assert len(detail.criteria) == 2
     assert len(detail.hints) == 1
     assert detail.criteria[0].criterion == "Criterion 1"
+
+
+# ── get_quests_with_status (sequential unlock) ────────────────────────────────
+
+async def _seed_three_quests(db) -> list[Quest]:
+    await _seed_level(db, 1)
+    quests = []
+    for i in range(1, 4):
+        q = Quest(
+            level_min=1, type="practice", title=f"Quest {i}",
+            instructions="Do it.", xp_reward=50, order_index=i, is_active=True,
+        )
+        db.add(q)
+        quests.append(q)
+    await db.flush()
+    return quests
+
+
+async def test_status_first_unlocked_rest_locked(db):
+    await _seed_three_quests(db)
+    items = await repo.get_quests_with_status(db, user_level=1, user_id=1)
+    statuses = [it["status"] for it in items]
+    assert statuses == ["unlocked", "locked", "locked"]
+
+
+async def test_status_unlocks_next_after_completion(db):
+    quests = await _seed_three_quests(db)
+    await repo.start_quest(db, user_id=2, quest_id=quests[0].id)
+    await repo.complete_quest(db, user_id=2, quest_id=quests[0].id, score=100, xp_earned=50)
+
+    items = await repo.get_quests_with_status(db, user_level=1, user_id=2)
+    statuses = [it["status"] for it in items]
+    assert statuses == ["completed", "unlocked", "locked"]
+
+
+async def test_status_all_completed(db):
+    quests = await _seed_three_quests(db)
+    for q in quests:
+        await repo.start_quest(db, user_id=3, quest_id=q.id)
+        await repo.complete_quest(db, user_id=3, quest_id=q.id, score=100, xp_earned=50)
+
+    items = await repo.get_quests_with_status(db, user_level=1, user_id=3)
+    statuses = [it["status"] for it in items]
+    assert statuses == ["completed", "completed", "completed"]

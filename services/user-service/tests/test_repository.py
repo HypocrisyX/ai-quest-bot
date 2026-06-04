@@ -1,11 +1,8 @@
 """Tests for user-service business logic in repository.py."""
 from datetime import date, timedelta
 
-import pytest
-
 from app import repository as repo
 from app.schemas import UserCreate
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -55,18 +52,18 @@ async def test_add_xp_no_levelup(db):
 
 
 async def test_add_xp_exact_levelup(db):
-    """100 XP at level 1 (xp_to_next=100) triggers level-up."""
+    """1100 XP at level 1 (xp_to_next=1100) triggers exactly one level-up."""
     await _make_user(db, 11)
-    result = await repo.add_xp(db, 11, 100, "quest_complete")
+    result = await repo.add_xp(db, 11, 1100, "quest_complete")
     assert result.leveled_up is True
     assert result.level_after == 2
     assert result.xp_after == 0  # consumed exactly
 
 
 async def test_add_xp_overflow_levelup(db):
-    """150 XP at level 1 → level-up with 50 XP carried over."""
+    """1150 XP at level 1 → level-up with 50 XP carried over."""
     await _make_user(db, 12)
-    result = await repo.add_xp(db, 12, 150, "quest_complete")
+    result = await repo.add_xp(db, 12, 1150, "quest_complete")
     assert result.leveled_up is True
     assert result.level_after == 2
     assert result.xp_after == 50
@@ -75,8 +72,8 @@ async def test_add_xp_overflow_levelup(db):
 async def test_add_xp_multiple_levelups(db):
     """Enough XP to skip two levels at once."""
     await _make_user(db, 13)
-    # Level 1 needs 100, level 2 needs 200 → 300+ XP triggers 2 level-ups
-    result = await repo.add_xp(db, 13, 350, "quest_complete")
+    # Level 1 needs 1100, level 2 needs 500 → 1600+ XP triggers 2 level-ups
+    result = await repo.add_xp(db, 13, 1700, "quest_complete")
     assert result.level_after >= 3
 
 

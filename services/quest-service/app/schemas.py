@@ -62,6 +62,11 @@ class QuestDetailOut(QuestOut):
     hints: list[QuestHintOut]
 
 
+class QuestListItemOut(QuestOut):
+    # "completed" — passed; "unlocked" — playable now; "locked" — previous not done
+    status: str
+
+
 class QuestProgressOut(BaseModel):
     id: int
     user_id: int

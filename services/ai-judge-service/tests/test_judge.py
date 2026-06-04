@@ -2,11 +2,8 @@
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from app.judge import _compute_weighted_score, evaluate_answer
 from app.schemas import CriterionIn
-
 
 # ── _compute_weighted_score ───────────────────────────────────────────────────
 
@@ -148,7 +145,6 @@ async def test_evaluate_answer_passes_cache_control():
         )
 
         call_kwargs = mock_client.messages.create.call_args
-        system = call_kwargs.kwargs.get("system") or call_kwargs.args[0] if call_kwargs.args else None
         # System is passed as a list with cache_control
         system_arg = call_kwargs.kwargs["system"]
         assert isinstance(system_arg, list)

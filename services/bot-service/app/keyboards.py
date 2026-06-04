@@ -14,10 +14,18 @@ def main_menu() -> InlineKeyboardMarkup:
 
 def quest_list(quests: list[dict]) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
+    type_icons = {"theory": "📖", "practice": "💻", "challenge": "🔥", "boss": "👹"}
     for q in quests:
-        type_icons = {"theory": "📖", "practice": "💻", "challenge": "🔥", "boss": "👹"}
-        type_icon = type_icons.get(q["type"], "❓")
-        kb.button(text=f"{type_icon} {q['title']}", callback_data=f"quest:detail:{q['id']}")
+        status = q.get("status", "unlocked")
+        if status == "completed":
+            text = f"✅ {q['title']}"
+            kb.button(text=text, callback_data=f"quest:detail:{q['id']}")
+        elif status == "locked":
+            text = f"🔒 {q['title']}"
+            kb.button(text=text, callback_data="quest:locked")
+        else:  # unlocked
+            icon = type_icons.get(q["type"], "❓")
+            kb.button(text=f"{icon} {q['title']}", callback_data=f"quest:detail:{q['id']}")
     kb.button(text="◀️ Назад", callback_data="menu:main")
     kb.adjust(1)
     return kb.as_markup()

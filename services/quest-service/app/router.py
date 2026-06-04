@@ -11,6 +11,7 @@ from .schemas import (
     DailyQuestOut,
     QuestDetailOut,
     QuestHintRevealOut,
+    QuestListItemOut,
     QuestOut,
     QuestProgressOut,
     StartQuestRequest,
@@ -21,9 +22,17 @@ router = APIRouter()
 DB = Annotated[AsyncSession, Depends(get_db)]
 
 
-@router.get("/quests", response_model=list[QuestOut])
-async def list_quests(level: int = Query(..., ge=1), db: DB = None):
-    return await repo.get_quests_for_level(db, level)
+@router.get("/quests", response_model=list[QuestListItemOut])
+async def list_quests(
+    level: int = Query(..., ge=1),
+    user_id: int = Query(..., description="for sequential-unlock status"),
+    db: DB = None,
+):
+    items = await repo.get_quests_with_status(db, level, user_id)
+    return [
+        QuestListItemOut(**QuestOut.model_validate(it["quest"]).model_dump(), status=it["status"])
+        for it in items
+    ]
 
 
 @router.get("/quests/{quest_id}", response_model=QuestDetailOut)

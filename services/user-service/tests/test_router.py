@@ -79,7 +79,7 @@ async def test_add_xp(client):
 async def test_add_xp_triggers_levelup(client):
     await client.post("/users", json={"id": 4002, "first_name": "Frank"})
     r = await client.post("/users/4002/xp", json={
-        "user_id": 4002, "delta_xp": 100, "reason": "quest_complete",
+        "user_id": 4002, "delta_xp": 1100, "reason": "quest_complete",
     })
     assert r.status_code == 200
     assert r.json()["leveled_up"] is True

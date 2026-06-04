@@ -47,16 +47,19 @@ def _score_bar(score: int) -> str:
     return "█" * filled + "░" * (10 - filled)
 
 
+_LIST_HINT = "🔒 — закрыт, пройди предыдущий · ✅ — пройден"
+
+
 @router.message(Command("quests"))
 async def cmd_quests(message: Message):
     profile = await client.get_profile(message.from_user.id)
     level = profile["stats"]["level"]
-    quests = await client.get_quests(level)
+    quests = await client.get_quests(level, message.from_user.id)
     if not quests:
         await message.answer("Квестов для твоего уровня пока нет.", reply_markup=back_to_main())
         return
     await message.answer(
-        f"⚔️ <b>Доступные квесты</b> (уровень {level}):",
+        f"⚔️ <b>Квесты</b> (уровень {level}):\n<i>{_LIST_HINT}</i>",
         reply_markup=quest_list(quests),
         parse_mode="HTML",
     )
@@ -67,7 +70,7 @@ async def cb_quests(call: CallbackQuery, state: FSMContext):
     await state.clear()
     profile = await client.get_profile(call.from_user.id)
     level = profile["stats"]["level"]
-    quests = await client.get_quests(level)
+    quests = await client.get_quests(level, call.from_user.id)
     if not quests:
         await call.message.edit_text(
             "Квестов для твоего уровня пока нет.", reply_markup=back_to_main()
@@ -75,11 +78,16 @@ async def cb_quests(call: CallbackQuery, state: FSMContext):
         await call.answer()
         return
     await call.message.edit_text(
-        f"⚔️ <b>Доступные квесты</b> (уровень {level}):",
+        f"⚔️ <b>Квесты</b> (уровень {level}):\n<i>{_LIST_HINT}</i>",
         reply_markup=quest_list(quests),
         parse_mode="HTML",
     )
     await call.answer()
+
+
+@router.callback_query(lambda c: c.data == "quest:locked")
+async def cb_quest_locked(call: CallbackQuery):
+    await call.answer("🔒 Сначала пройди предыдущий квест", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("quest:detail:"))
