@@ -1,0 +1,292 @@
+version: "3.9"
+
+# Production docker-compose.
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# Differences from dev (docker-compose.yml):
+#   - No DB / Redis / RabbitMQ ports exposed to host
+#   - No RabbitMQ management UI
+#   - No FastAPI service ports exposed directly (all traffic goes through nginx)
+#   - Nginx on port 80 as the single entry point
+#   - restart: unless-stopped on all services
+#   - Memory limits on every container
+#   - Log rotation (max 10 MB × 3 files per service)
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  logging: *logging
+
+services:
+  # ── Databases ───────────────────────────────────────────────────────────────
+
+  db-user:
+    image: postgres:16-alpine
+    <<: *service-defaults
+    environment:
+      POSTGRES_DB: user_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_user:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d user_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  db-quest:
+    image: postgres:16-alpine
+    <<: *service-defaults
+    environment:
+      POSTGRES_DB: quest_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_quest:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quest_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  db-judge:
+    image: postgres:16-alpine
+    <<: *service-defaults
+    environment:
+      POSTGRES_DB: judge_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_judge:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d judge_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  db-social:
+    image: postgres:16-alpine
+    <<: *service-defaults
+    environment:
+      POSTGRES_DB: social_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_social:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d social_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  db-notification:
+    image: postgres:16-alpine
+    <<: *service-defaults
+    environment:
+      POSTGRES_DB: notification_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_notification:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d notification_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  redis:
+    image: redis:7-alpine
+    <<: *service-defaults
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  rabbitmq:
+    image: rabbitmq:3-alpine   # no management UI in prod
+    <<: *service-defaults
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  # ── Application services ─────────────────────────────────────────────────────
+
+  user-service:
+    build: ./services/user-service
+    <<: *service-defaults
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-user:5432/user_service
+    depends_on:
+      db-user:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  quest-service:
+    build: ./services/quest-service
+    <<: *service-defaults
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-quest:5432/quest_service
+    depends_on:
+      db-quest:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  ai-judge-service:
+    build: ./services/ai-judge-service
+    <<: *service-defaults
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-judge:5432/judge_service
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    depends_on:
+      db-judge:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1g   # more headroom for Claude API response buffering
+
+  social-service:
+    build: ./services/social-service
+    <<: *service-defaults
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-social:5432/social_service
+    depends_on:
+      db-social:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  notification-service:
+    build: ./services/notification-service
+    <<: *service-defaults
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-notification:5432/notification_service
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+    depends_on:
+      db-notification:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  bot-service:
+    build: ./services/bot-service
+    <<: *service-defaults
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
+      USER_SERVICE_URL: http://user-service:8000
+      QUEST_SERVICE_URL: http://quest-service:8000
+      JUDGE_SERVICE_URL: http://ai-judge-service:8000
+      SOCIAL_SERVICE_URL: http://social-service:8000
+      NOTIFICATION_SERVICE_URL: http://notification-service:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      quest-service:
+        condition: service_started
+      ai-judge-service:
+        condition: service_started
+      social-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  # ── Nginx (single entry point) ───────────────────────────────────────────────
+
+  nginx:
+    build: ./nginx
+    <<: *service-defaults
+    ports:
+      - "80:80"
+    depends_on:
+      - user-service
+      - quest-service
+      - ai-judge-service
+      - social-service
+      - notification-service
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
+volumes:
+  pg_user:
+  pg_quest:
+  pg_judge:
+  pg_social:
+  pg_notification:
+  redis_data:
+  rabbitmq_data:

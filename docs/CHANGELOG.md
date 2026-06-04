@@ -10,7 +10,31 @@
 
 ---
 
-## 2026-06-04 (продолжение)
+## 2026-06-04 (продолжение — Nginx + Production)
+
+### Nginx + Production docker-compose
+
+**Добавлено:**
+- `nginx/nginx.conf` — reverse proxy перед всеми 5 FastAPI сервисами:
+  - `/health` — собственный Nginx healthcheck
+  - `/health/<service>` — прокси к `/health` каждого сервиса
+  - `/api/users/`, `/api/quests/`, `/api/judge/`, `/api/social/`, `/api/notify/` — маршрутизация с отрезанием префикса
+  - keepalive к upstream-ам, таймауты, логирование
+- `nginx/Dockerfile` — `nginx:1.27-alpine` с вшитым конфигом
+- `docker-compose.prod.yml` — production-сборка:
+  - Нет открытых портов БД, Redis, RabbitMQ на хост
+  - Нет RabbitMQ management UI (порт 15672)
+  - Нет прямых портов FastAPI-сервисов — только nginx на 80
+  - `restart: unless-stopped` на всех контейнерах
+  - Лимиты памяти: 512m на большинство сервисов, 1g на ai-judge, 256m на bot, 128m на nginx
+  - Ротация логов: 10m × 3 файла через `x-logging` YAML-якорь
+  - Redis с `maxmemory 128mb` + LRU eviction
+  - `POSTGRES_PASSWORD`, `RABBITMQ_USER`, `RABBITMQ_PASS` как отдельные env-переменные
+  - Healthcheck у nginx через wget
+- `.env.example` дополнен prod-переменными (`POSTGRES_PASSWORD`, `RABBITMQ_*`)
+- `Makefile` расширен: `make prod-up`, `make prod-down`, `make prod-build`, `make prod-logs`, `make test`
+
+## 2026-06-04 (продолжение — тесты)
 
 ### Тесты
 

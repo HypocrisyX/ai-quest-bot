@@ -1,6 +1,9 @@
 PYTHON = python3
+PROD_FILE = -f docker-compose.prod.yml
 
-.PHONY: up down seed seed-quests seed-notifications logs
+# ── Dev ───────────────────────────────────────────────────────────────────────
+
+.PHONY: up down logs seed seed-quests seed-notifications
 
 up:
 	docker-compose up --build -d
@@ -18,3 +21,34 @@ seed-quests:
 
 seed-notifications:
 	$(PYTHON) scripts/seed_notifications.py
+
+# ── Prod ──────────────────────────────────────────────────────────────────────
+
+.PHONY: prod-up prod-down prod-logs prod-build
+
+prod-up:
+	docker-compose $(PROD_FILE) up -d
+
+prod-down:
+	docker-compose $(PROD_FILE) down
+
+prod-logs:
+	docker-compose $(PROD_FILE) logs -f
+
+prod-build:
+	docker-compose $(PROD_FILE) build
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+
+.PHONY: test test-user test-quest test-judge
+
+test: test-user test-quest test-judge
+
+test-user:
+	cd services/user-service && pytest -v
+
+test-quest:
+	cd services/quest-service && pytest -v
+
+test-judge:
+	cd services/ai-judge-service && pytest -v
