@@ -216,6 +216,17 @@ async def handle_answer(message: Message, state: FSMContext):
         streak_days = streak_result.get("streak_days", 0)
         if streak_days in STREAK_MILESTONES:
             await events.publish_streak_milestone(user_id, streak_days)
+
+        # Award any newly-earned achievements (after stats are updated).
+        new_achievements = await client.check_achievements(user_id)
+        for ach in new_achievements:
+            reward = []
+            if ach.get("xp_reward"):
+                reward.append(f"+{ach['xp_reward']} XP")
+            if ach.get("crystal_reward"):
+                reward.append(f"+{ach['crystal_reward']} 💎")
+            reward_str = f" ({', '.join(reward)})" if reward else ""
+            result_text += f"\n🏅 Достижение: <b>{ach['icon']} {ach['title']}</b>{reward_str}"
     else:
         await client.fail_quest(user_id, quest["id"])
 

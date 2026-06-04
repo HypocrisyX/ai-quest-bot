@@ -157,6 +157,61 @@ async def test_xp_boost_not_applied_to_non_quest(db):
     assert stats.xp_boost_quests == repo.XP_BOOST_QUESTS
 
 
+# ── achievements ──────────────────────────────────────────────────────────────
+
+async def _seed_achievement(db, code, xp=0, crystals=0):
+    from app.models import Achievement
+    ach = Achievement(
+        code=code, title=code, description="", icon="🏅",
+        xp_reward=xp, crystal_reward=crystals,
+    )
+    db.add(ach)
+    await db.flush()
+    return ach
+
+
+async def test_achievement_first_quest_granted(db):
+    await _make_user(db, 70)
+    await _seed_achievement(db, "first_quest", xp=20, crystals=5)
+    await repo.add_xp(db, 70, 50, "quest_complete")  # total_quests → 1
+
+    granted = await repo.check_and_grant_achievements(db, 70)
+    codes = [g["code"] for g in granted]
+    assert "first_quest" in codes
+    # Reward applied
+    stats = await repo.get_user_stats(db, 70)
+    assert stats.crystals == 5
+
+
+async def test_achievement_not_regranted(db):
+    await _make_user(db, 71)
+    await _seed_achievement(db, "first_quest", xp=20, crystals=5)
+    await repo.add_xp(db, 71, 50, "quest_complete")
+
+    first = await repo.check_and_grant_achievements(db, 71)
+    second = await repo.check_and_grant_achievements(db, 71)
+    assert len(first) == 1
+    assert second == []  # idempotent
+
+
+async def test_achievement_locked_until_condition_met(db):
+    await _make_user(db, 72)
+    await _seed_achievement(db, "quests_5")
+    # Only 1 quest done → quests_5 (needs 5) should not unlock
+    await repo.add_xp(db, 72, 50, "quest_complete")
+    granted = await repo.check_and_grant_achievements(db, 72)
+    assert "quests_5" not in [g["code"] for g in granted]
+
+
+async def test_achievement_level_based(db):
+    await _make_user(db, 73)
+    await _seed_achievement(db, "level_2", crystals=10)
+    await repo.add_xp(db, 73, 1100, "quest_complete")  # → level 2
+
+    granted = await repo.check_and_grant_achievements(db, 73)
+    assert "level_2" in [g["code"] for g in granted]
+
+
 # ── update_streak ─────────────────────────────────────────────────────────────
 
 async def test_streak_first_day(db):

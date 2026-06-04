@@ -14,13 +14,16 @@ down:
 logs:
 	docker-compose logs -f
 
-seed: seed-quests seed-notifications
+seed: seed-quests seed-notifications seed-achievements
 
 seed-quests:
 	$(PYTHON) scripts/seed_quests.py
 
 seed-notifications:
 	$(PYTHON) scripts/seed_notifications.py
+
+seed-achievements:
+	$(PYTHON) scripts/seed_achievements.py
 
 # ── Prod ──────────────────────────────────────────────────────────────────────
 

@@ -269,16 +269,34 @@ async def get_active_subscription(
 
 async def get_user_achievements(
     session: AsyncSession, user_id: int
-) -> list[UserAchievement]:
+) -> list[dict]:
+    """Earned achievements with full display data, newest first."""
     result = await session.execute(
-        select(UserAchievement).where(UserAchievement.user_id == user_id)
+        select(Achievement, UserAchievement.earned_at)
+        .join(UserAchievement, UserAchievement.achievement_id == Achievement.id)
+        .where(UserAchievement.user_id == user_id)
+        .order_by(UserAchievement.earned_at.desc())
     )
-    return list(result.scalars())
+    return [
+        {
+            "code": ach.code,
+            "title": ach.title,
+            "description": ach.description,
+            "icon": ach.icon,
+            "xp_reward": ach.xp_reward,
+            "crystal_reward": ach.crystal_reward,
+            "earned_at": earned_at,
+        }
+        for ach, earned_at in result
+    ]
 
 
 async def grant_achievement(
     session: AsyncSession, user_id: int, achievement_code: str
-) -> Optional[UserAchievement]:
+) -> Optional[Achievement]:
+    """Idempotently grant an achievement. Returns the Achievement if newly
+    granted, or None if it doesn't exist or the user already has it.
+    """
     ach_result = await session.execute(
         select(Achievement).where(Achievement.code == achievement_code)
     )
@@ -295,10 +313,59 @@ async def grant_achievement(
     if existing.scalar_one_or_none():
         return None
 
-    ua = UserAchievement(user_id=user_id, achievement_id=achievement.id)
-    session.add(ua)
+    session.add(UserAchievement(user_id=user_id, achievement_id=achievement.id))
     await session.flush()
-    return ua
+    return achievement
+
+
+# Unlock conditions keyed by achievement code. Each predicate takes UserStats.
+ACHIEVEMENT_RULES = {
+    "first_quest": lambda s: (s.total_quests or 0) >= 1,
+    "quests_5": lambda s: (s.total_quests or 0) >= 5,
+    "quests_10": lambda s: (s.total_quests or 0) >= 10,
+    "quests_25": lambda s: (s.total_quests or 0) >= 25,
+    "level_2": lambda s: s.level >= 2,
+    "level_3": lambda s: s.level >= 3,
+    "streak_3": lambda s: (s.streak_days or 0) >= 3,
+    "streak_7": lambda s: (s.streak_days or 0) >= 7,
+}
+
+
+async def check_and_grant_achievements(
+    session: AsyncSession, user_id: int
+) -> list[dict]:
+    """Evaluate all achievement rules against the user's current stats, grant
+    any newly-met ones, apply their rewards, and return the newly granted list.
+    """
+    newly_granted: list[dict] = []
+    stats = await get_user_stats(session, user_id)
+    if stats is None:
+        return newly_granted
+
+    for code, rule in ACHIEVEMENT_RULES.items():
+        if not rule(stats):
+            continue
+        achievement = await grant_achievement(session, user_id, code)
+        if achievement is None:
+            continue  # already earned or missing from catalog
+
+        # Apply rewards directly (avoid add_xp boost/recursion).
+        if achievement.crystal_reward:
+            stats.crystals += achievement.crystal_reward
+        if achievement.xp_reward:
+            stats.xp += achievement.xp_reward
+
+        newly_granted.append({
+            "code": achievement.code,
+            "title": achievement.title,
+            "icon": achievement.icon,
+            "xp_reward": achievement.xp_reward,
+            "crystal_reward": achievement.crystal_reward,
+        })
+
+    if newly_granted:
+        await session.flush()
+    return newly_granted
 
 
 async def create_referral(

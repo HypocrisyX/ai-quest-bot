@@ -59,6 +59,14 @@ async def get_profile(user_id: int) -> dict:
     return await _get(f"{USER_SVC}/users/{user_id}/profile")
 
 
+async def get_achievements(user_id: int) -> list[dict]:
+    return await _get(f"{USER_SVC}/users/{user_id}/achievements")
+
+
+async def check_achievements(user_id: int) -> list[dict]:
+    return await _post(f"{USER_SVC}/users/{user_id}/achievements/check", {})
+
+
 async def add_xp(user_id: int, delta_xp: int, reason: str) -> dict:
     return await _post(f"{USER_SVC}/users/{user_id}/xp", {
         "user_id": user_id,

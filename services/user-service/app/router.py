@@ -6,11 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from . import repository as repo
 from .database import get_db
 from .schemas import (
-    AchievementOut,
     AddCrystalsRequest,
     AddCrystalsResponse,
     AddXpRequest,
     AddXpResponse,
+    EarnedAchievementOut,
+    GrantedAchievementOut,
     PurchaseRequest,
     PurchaseResponse,
     ReferralCreate,
@@ -89,15 +90,24 @@ async def get_subscription(user_id: int, db: DB):
     return await repo.get_active_subscription(db, user_id)
 
 
-@router.get("/users/{user_id}/achievements", response_model=list[AchievementOut])
+@router.get("/users/{user_id}/achievements", response_model=list[EarnedAchievementOut])
 async def get_achievements(user_id: int, db: DB):
     return await repo.get_user_achievements(db, user_id)
 
 
+@router.post(
+    "/users/{user_id}/achievements/check",
+    response_model=list[GrantedAchievementOut],
+)
+async def check_achievements(user_id: int, db: DB):
+    """Evaluate rules and grant any newly-earned achievements. Returns the new ones."""
+    return await repo.check_and_grant_achievements(db, user_id)
+
+
 @router.post("/users/{user_id}/achievements/{code}", status_code=201)
 async def grant_achievement(user_id: int, code: str, db: DB):
-    ua = await repo.grant_achievement(db, user_id, code)
-    if not ua:
+    ach = await repo.grant_achievement(db, user_id, code)
+    if not ach:
         raise HTTPException(409, "Already granted or achievement not found")
     return {"granted": True}
 

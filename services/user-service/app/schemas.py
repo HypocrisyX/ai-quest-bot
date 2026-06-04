@@ -72,6 +72,24 @@ class UserAchievementOut(BaseModel):
     earned_at: datetime
 
 
+class EarnedAchievementOut(BaseModel):
+    code: str
+    title: str
+    description: Optional[str]
+    icon: Optional[str]
+    xp_reward: int
+    crystal_reward: int
+    earned_at: datetime
+
+
+class GrantedAchievementOut(BaseModel):
+    code: str
+    title: str
+    icon: Optional[str]
+    xp_reward: int
+    crystal_reward: int
+
+
 class AddXpRequest(BaseModel):
     user_id: int
     delta_xp: int
