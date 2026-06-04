@@ -1,3 +1,5 @@
+import os
+
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -12,6 +14,11 @@ STREAK_MILESTONES = {7, 30, 100}
 router = Router()
 
 PASS_THRESHOLD = 60  # minimum score to pass a quest
+
+# When false (AI_JUDGE_ENABLED=false), answers auto-approve without calling the
+# AI judge — saves tokens during testing. Flip back to true to restore real
+# evaluation. See app/handlers/quests.py:handle_answer.
+AI_JUDGE_ENABLED = os.getenv("AI_JUDGE_ENABLED", "true").lower() == "true"
 
 
 class QuestFlow(StatesGroup):
@@ -121,17 +128,21 @@ async def handle_answer(message: Message, state: FSMContext):
     attempt_num = data["attempt_num"]
     user_id = message.from_user.id
 
-    await message.answer("🤖 Оцениваю ответ...")
+    if AI_JUDGE_ENABLED:
+        await message.answer("🤖 Оцениваю ответ...")
+        evaluation = await client.evaluate(
+            user_id=user_id,
+            quest=quest,
+            attempt_num=attempt_num,
+            user_input=message.text,
+        )
+        score = evaluation["score"]
+        feedback = evaluation["feedback"]
+    else:
+        # Test mode: auto-approve without calling the AI judge (saves tokens).
+        score = 100
+        feedback = "✅ Тестовый режим: ответ принят автоматически (AI-проверка отключена)."
 
-    evaluation = await client.evaluate(
-        user_id=user_id,
-        quest=quest,
-        attempt_num=attempt_num,
-        user_input=message.text,
-    )
-
-    score = evaluation["score"]
-    feedback = evaluation["feedback"]
     passed = score >= PASS_THRESHOLD
 
     bar = _score_bar(score)
