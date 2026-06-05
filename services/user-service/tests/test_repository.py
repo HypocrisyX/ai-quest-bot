@@ -155,6 +155,37 @@ async def test_user_rank_missing_user(db):
     assert await repo.user_rank(db, 999999, "xp") is None
 
 
+# ── marketplace settle ────────────────────────────────────────────────────────
+
+async def test_marketplace_settle_moves_crystals_minus_commission(db):
+    await _make_user(db, 200)  # seller
+    await _make_user(db, 201)  # buyer
+    await repo.add_crystals(db, 201, 100, "test")
+    result = await repo.marketplace_settle(db, buyer_id=201, seller_id=200, price=100)
+    assert result["ok"] is True
+    # 10% commission → seller gets 90
+    assert result["seller_earned"] == 90
+    assert result["commission"] == 10
+    assert (await repo.get_user_stats(db, 201)).crystals == 0
+    assert (await repo.get_user_stats(db, 200)).crystals == 90
+
+
+async def test_marketplace_settle_insufficient(db):
+    await _make_user(db, 202)
+    await _make_user(db, 203)
+    result = await repo.marketplace_settle(db, buyer_id=203, seller_id=202, price=100)
+    assert result["ok"] is False
+    assert result["reason"] == "insufficient"
+
+
+async def test_marketplace_settle_self_rejected(db):
+    await _make_user(db, 204)
+    await repo.add_crystals(db, 204, 100, "test")
+    result = await repo.marketplace_settle(db, buyer_id=204, seller_id=204, price=50)
+    assert result["ok"] is False
+    assert result["reason"] == "self"
+
+
 # ── duels (ELO + rewards) ─────────────────────────────────────────────────────
 
 async def test_duel_tie_equal_ratings_no_elo_change(db):

@@ -8,6 +8,7 @@ USER_SVC = os.getenv("USER_SERVICE_URL", "http://user-service:8000")
 QUEST_SVC = os.getenv("QUEST_SERVICE_URL", "http://quest-service:8000")
 JUDGE_SVC = os.getenv("JUDGE_SERVICE_URL", "http://ai-judge-service:8000")
 SOCIAL_SVC = os.getenv("SOCIAL_SERVICE_URL", "http://social-service:8000")
+MARKET_SVC = os.getenv("MARKETPLACE_SERVICE_URL", "http://marketplace-service:8000")
 
 _session: Optional[aiohttp.ClientSession] = None
 
@@ -285,3 +286,85 @@ async def apply_duel_result(challenger_id: int, opponent_id: int, winner_id: Opt
         "opponent_id": opponent_id,
         "winner_id": winner_id,
     })
+
+
+# ── Marketplace ───────────────────────────────────────────────────────────────
+
+async def training_complete(user_id: int) -> dict:
+    return await _get(f"{QUEST_SVC}/me/training-complete", params={"user_id": user_id})
+
+
+async def marketplace_settle(buyer_id: int, seller_id: int, price: int) -> dict:
+    return await _post(f"{USER_SVC}/marketplace/settle", {
+        "buyer_id": buyer_id,
+        "seller_id": seller_id,
+        "price": price,
+    })
+
+
+async def create_listing(
+    seller_id: int, title: str, description: str, price: int,
+    payload_text: str, payload_file_id: Optional[str], payload_url: Optional[str],
+) -> dict:
+    return await _post(f"{MARKET_SVC}/listings", {
+        "seller_id": seller_id,
+        "title": title,
+        "description": description,
+        "price": price,
+        "payload_text": payload_text,
+        "payload_file_id": payload_file_id,
+        "payload_url": payload_url,
+    })
+
+
+async def list_listings(user_id: int, limit: int = 10, offset: int = 0) -> dict:
+    return await _get(f"{MARKET_SVC}/listings", params={
+        "limit": limit, "offset": offset, "exclude_seller": user_id,
+    })
+
+
+async def get_listing(listing_id: int) -> Optional[dict]:
+    try:
+        return await _get(f"{MARKET_SVC}/listings/{listing_id}")
+    except aiohttp.ClientResponseError:
+        return None
+
+
+async def get_listing_payload(listing_id: int) -> dict:
+    return await _get(f"{MARKET_SVC}/listings/{listing_id}/payload")
+
+
+async def has_purchased(buyer_id: int, listing_id: int) -> bool:
+    data = await _get(f"{MARKET_SVC}/buyers/{buyer_id}/purchased/{listing_id}")
+    return data.get("purchased", False)
+
+
+async def record_purchase(listing_id: int, buyer_id: int, price: int, seller_earned: int) -> dict:
+    return await _post(f"{MARKET_SVC}/purchases", {
+        "listing_id": listing_id,
+        "buyer_id": buyer_id,
+        "price": price,
+        "seller_earned": seller_earned,
+    })
+
+
+async def get_seller_listings(seller_id: int) -> list[dict]:
+    return await _get(f"{MARKET_SVC}/sellers/{seller_id}/listings")
+
+
+async def get_seller_stats(seller_id: int) -> dict:
+    return await _get(f"{MARKET_SVC}/sellers/{seller_id}/stats")
+
+
+async def get_buyer_purchases(buyer_id: int) -> list[dict]:
+    return await _get(f"{MARKET_SVC}/buyers/{buyer_id}/purchases")
+
+
+async def remove_listing(listing_id: int) -> dict:
+    async with get_session().delete(f"{MARKET_SVC}/listings/{listing_id}") as r:
+        r.raise_for_status()
+        return await r.json()
+
+
+async def admin_listings(limit: int = 20) -> list[dict]:
+    return await _get(f"{MARKET_SVC}/admin/listings", params={"limit": limit})

@@ -83,6 +83,22 @@ services:
       timeout: 5s
       retries: 10
 
+  db-marketplace:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: marketplace_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5437:5432"
+    volumes:
+      - pg_marketplace:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marketplace_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   redis:
     image: redis:7-alpine
     ports:
@@ -154,6 +170,16 @@ services:
       rabbitmq:
         condition: service_started
 
+  marketplace-service:
+    build: ./services/marketplace-service
+    ports:
+      - "8006:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-marketplace:5432/marketplace_service
+    depends_on:
+      db-marketplace:
+        condition: service_healthy
+
   bot-service:
     build: ./services/bot-service
     ports:
@@ -167,6 +193,7 @@ services:
       JUDGE_SERVICE_URL: http://ai-judge-service:8000
       SOCIAL_SERVICE_URL: http://social-service:8000
       NOTIFICATION_SERVICE_URL: http://notification-service:8000
+      MARKETPLACE_SERVICE_URL: http://marketplace-service:8000
       # TEST MODE: auto-approve quest answers without calling the AI judge.
       # Set to "true" (or remove) to restore real AI evaluation.
       AI_JUDGE_ENABLED: "false"
@@ -180,8 +207,10 @@ services:
       - ai-judge-service
       - social-service
       - notification-service
+      - marketplace-service
 
 volumes:
+  pg_marketplace:
   pg_user:
   pg_quest:
   pg_judge:

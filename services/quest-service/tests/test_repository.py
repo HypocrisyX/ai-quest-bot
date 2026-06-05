@@ -261,3 +261,24 @@ async def test_categories_video_soon_when_empty_and_reachable(db):
     by_key = {c["key"]: c for c in cats}
     assert by_key["text"]["status"] == "soon"
     assert by_key["image"]["status"] == "locked"
+
+
+# ── training progress ─────────────────────────────────────────────────────────
+
+async def test_training_progress_incomplete(db):
+    await _seed_three_quests(db, category="text")
+    progress = await repo.training_progress(db, user_id=60)
+    assert progress["total"] == 3
+    assert progress["completed"] == 0
+    assert progress["complete"] is False
+
+
+async def test_training_progress_complete(db):
+    quests = await _seed_three_quests(db, category="text")
+    for q in quests:
+        await repo.start_quest(db, user_id=61, quest_id=q.id)
+        await repo.complete_quest(db, user_id=61, quest_id=q.id, score=100, xp_earned=50)
+    progress = await repo.training_progress(db, user_id=61)
+    assert progress["total"] == 3
+    assert progress["completed"] == 3
+    assert progress["complete"] is True

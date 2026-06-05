@@ -88,6 +88,7 @@ jobs:
           - ai-judge-service
           - social-service
           - notification-service
+          - marketplace-service
           - bot-service
     steps:
       - uses: actions/checkout@v4

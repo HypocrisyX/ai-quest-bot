@@ -306,6 +306,45 @@ async def apply_duel_result(
     }
 
 
+# ── Marketplace ───────────────────────────────────────────────────────────────
+
+MARKETPLACE_COMMISSION_PCT = 10  # app's cut of each sale
+
+
+async def marketplace_settle(
+    session: AsyncSession, buyer_id: int, seller_id: int, price: int
+) -> dict:
+    """Move crystals buyer→seller for a marketplace purchase, minus commission.
+
+    The commission share simply leaves circulation (= the app's revenue; becomes
+    real money once Stars are wired up). Returns ok + amounts.
+    """
+    if buyer_id == seller_id:
+        return {"ok": False, "reason": "self", "seller_earned": 0, "buyer_balance": 0}
+
+    buyer = await get_user_stats(session, buyer_id)
+    seller = await get_user_stats(session, seller_id)
+    if buyer is None or seller is None:
+        return {"ok": False, "reason": "missing_user", "seller_earned": 0, "buyer_balance": 0}
+    if buyer.crystals < price:
+        return {
+            "ok": False, "reason": "insufficient",
+            "seller_earned": 0, "buyer_balance": buyer.crystals,
+        }
+
+    seller_earned = round(price * (100 - MARKETPLACE_COMMISSION_PCT) / 100)
+    await add_crystals(session, buyer_id, -price, "marketplace_buy")
+    await add_crystals(session, seller_id, seller_earned, "marketplace_sell")
+
+    return {
+        "ok": True,
+        "reason": None,
+        "seller_earned": seller_earned,
+        "commission": price - seller_earned,
+        "buyer_balance": buyer.crystals,
+    }
+
+
 # ── Shop ──────────────────────────────────────────────────────────────────────
 # Catalog lives in code. Only "xp_boost" is functional; the rest are placeholders
 # (available=False) to be filled in later.

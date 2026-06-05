@@ -134,6 +134,26 @@ async def get_quests_with_status(
     return items
 
 
+async def training_progress(session: AsyncSession, user_id: int) -> dict:
+    """Overall completion across all active quests. complete=True unlocks marketplace."""
+    total = await session.scalar(
+        select(func.count()).select_from(Quest).where(Quest.is_active)
+    )
+    completed = await session.scalar(
+        select(func.count())
+        .select_from(UserQuestProgress)
+        .join(Quest, Quest.id == UserQuestProgress.quest_id)
+        .where(UserQuestProgress.status == "completed", Quest.is_active)
+    )
+    total = total or 0
+    completed = completed or 0
+    return {
+        "completed": completed,
+        "total": total,
+        "complete": total > 0 and completed >= total,
+    }
+
+
 async def get_completed_quests(
     session: AsyncSession, user_id: int, limit: int = 50
 ) -> list[dict]:

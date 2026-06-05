@@ -102,6 +102,25 @@ services:
         limits:
           memory: 512m
 
+  db-marketplace:
+    image: postgres:16-alpine
+    <<: *service-defaults
+    environment:
+      POSTGRES_DB: marketplace_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    volumes:
+      - pg_marketplace:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d marketplace_service"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
   db-notification:
     image: postgres:16-alpine
     <<: *service-defaults
@@ -210,6 +229,19 @@ services:
         limits:
           memory: 512m
 
+  marketplace-service:
+    build: ./services/marketplace-service
+    <<: *service-defaults
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-marketplace:5432/marketplace_service
+    depends_on:
+      db-marketplace:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
   notification-service:
     build: ./services/notification-service
     <<: *service-defaults
@@ -239,6 +271,8 @@ services:
       JUDGE_SERVICE_URL: http://ai-judge-service:8000
       SOCIAL_SERVICE_URL: http://social-service:8000
       NOTIFICATION_SERVICE_URL: http://notification-service:8000
+      MARKETPLACE_SERVICE_URL: http://marketplace-service:8000
+      ADMIN_IDS: ${ADMIN_IDS:-}
     depends_on:
       redis:
         condition: service_healthy
@@ -253,6 +287,8 @@ services:
       social-service:
         condition: service_started
       notification-service:
+        condition: service_started
+      marketplace-service:
         condition: service_started
     deploy:
       resources:
@@ -287,6 +323,7 @@ volumes:
   pg_quest:
   pg_judge:
   pg_social:
+  pg_marketplace:
   pg_notification:
   redis_data:
   rabbitmq_data:

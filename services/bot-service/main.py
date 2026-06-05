@@ -15,6 +15,7 @@ from app.handlers import (
     deeplink,
     duels,
     leaderboard,
+    marketplace,
     myquests,
     profile,
     quests,
@@ -82,6 +83,7 @@ async def main() -> None:
     dp.include_router(myquests.router)
     dp.include_router(shop.router)
     dp.include_router(achievements.router)
+    dp.include_router(marketplace.router)
     dp.include_router(admin.router)
     dp.include_router(leaderboard.router)
     dp.include_router(daily.router)

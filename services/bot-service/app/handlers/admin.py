@@ -27,6 +27,7 @@ def _admin_menu():
     kb.button(text="📊 Сводка", callback_data="admin:stats")
     kb.button(text="👥 Участники", callback_data="admin:users:0")
     kb.button(text="⚔️ Квесты", callback_data="admin:quests")
+    kb.button(text="🏪 Маркетплейс", callback_data="admin:market")
     kb.button(text="🏠 Главное меню", callback_data="menu:main")
     kb.adjust(1)
     return kb.as_markup()
@@ -159,3 +160,42 @@ async def cb_admin_quests(call: CallbackQuery):
         text = text[:3990] + "\n…"
     await call.message.edit_text(text, reply_markup=_back_kb(), parse_mode="HTML")
     await call.answer()
+
+
+@router.callback_query(lambda c: c.data == "admin:market")
+async def cb_admin_market(call: CallbackQuery):
+    if not _is_admin(call.from_user.id):
+        await _deny(call, call.from_user.id)
+        return
+    listings = await client.admin_listings(limit=15)
+    lines = ["🏪 <b>Маркетплейс</b> — последние товары\n"]
+    kb = InlineKeyboardBuilder()
+    if not listings:
+        lines.append("Товаров пока нет.")
+    else:
+        for it in listings:
+            flag = "" if it["status"] == "active" else " 🚫"
+            lines.append(
+                f"• {it['title']} — {it['price']}💎 "
+                f"(продавец {it['seller_id']}, продаж {it['sales_count']}){flag}"
+            )
+            if it["status"] == "active":
+                kb.button(
+                    text=f"🗑 Снять «{it['title'][:18]}»",
+                    callback_data=f"admin:market:remove:{it['id']}",
+                )
+    kb.button(text="◀️ Админка", callback_data="admin:menu")
+    kb.adjust(1)
+    await call.message.edit_text("\n".join(lines), reply_markup=kb.as_markup(), parse_mode="HTML")
+    await call.answer()
+
+
+@router.callback_query(F.data.startswith("admin:market:remove:"))
+async def cb_admin_market_remove(call: CallbackQuery):
+    if not _is_admin(call.from_user.id):
+        await _deny(call, call.from_user.id)
+        return
+    listing_id = int(call.data.split(":")[3])
+    await client.remove_listing(listing_id)
+    await call.answer("Товар снят", show_alert=True)
+    await cb_admin_market(call)

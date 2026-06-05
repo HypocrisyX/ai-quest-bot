@@ -14,6 +14,7 @@ from .schemas import (
     DuelApplyResponse,
     EarnedAchievementOut,
     GrantedAchievementOut,
+    MarketplaceSettleRequest,
     PurchaseRequest,
     PurchaseResponse,
     ReferralCreate,
@@ -100,6 +101,12 @@ async def apply_duel(data: DuelApplyRequest, db: DB):
         db, data.challenger_id, data.opponent_id, data.winner_id
     )
     return DuelApplyResponse(**result)
+
+
+@router.post("/marketplace/settle")
+async def marketplace_settle(data: MarketplaceSettleRequest, db: DB):
+    """Move crystals buyer→seller for a purchase (minus commission)."""
+    return await repo.marketplace_settle(db, data.buyer_id, data.seller_id, data.price)
 
 
 @router.get("/users/{user_id}/shop", response_model=list[ShopItemOut])

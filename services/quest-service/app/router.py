@@ -43,6 +43,11 @@ async def list_categories(
     return [CategoryOut(**it) for it in items]
 
 
+@router.get("/me/training-complete")
+async def training_complete(user_id: int = Query(...), db: DB = None):
+    return await repo.training_progress(db, user_id)
+
+
 @router.get("/me/completed", response_model=list[CompletedQuestOut])
 async def my_completed(
     user_id: int = Query(...),

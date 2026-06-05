@@ -125,6 +125,12 @@ class DuelApplyResponse(BaseModel):
     opponent: dict
 
 
+class MarketplaceSettleRequest(BaseModel):
+    buyer_id: int
+    seller_id: int
+    price: int
+
+
 class PurchaseRequest(BaseModel):
     user_id: int
     item_key: str
