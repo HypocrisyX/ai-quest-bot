@@ -107,6 +107,54 @@ async def test_add_crystals_floor_zero(db):
     assert result.balance_after == 0
 
 
+# ── leaderboard ───────────────────────────────────────────────────────────────
+
+async def test_leaderboard_xp_ranks_by_level_then_xp(db):
+    await _make_user(db, 90)
+    await _make_user(db, 91)
+    await _make_user(db, 92)
+    # 90: level 2; 91: level 1 + 200xp; 92: level 1 + 50xp
+    (await repo.get_user_stats(db, 90)).level = 2
+    s91 = await repo.get_user_stats(db, 91)
+    s91.xp = 200
+    s92 = await repo.get_user_stats(db, 92)
+    s92.xp = 50
+    await db.flush()
+
+    board = await repo.leaderboard(db, "xp", limit=10)
+    ranked_ids = [e["user_id"] for e in board]
+    assert ranked_ids[:3] == [90, 91, 92]
+    assert board[0]["rank"] == 1
+
+
+async def test_leaderboard_elo_orders_desc(db):
+    await _make_user(db, 93)
+    await _make_user(db, 94)
+    (await repo.get_user_stats(db, 93)).elo_rating = 1200
+    (await repo.get_user_stats(db, 94)).elo_rating = 900
+    await db.flush()
+
+    board = await repo.leaderboard(db, "elo", limit=10)
+    assert board[0]["user_id"] == 93
+    assert board[0]["elo_rating"] == 1200
+
+
+async def test_user_rank_reflects_position(db):
+    await _make_user(db, 95)
+    await _make_user(db, 96)
+    (await repo.get_user_stats(db, 95)).level = 5
+    await db.flush()
+
+    top = await repo.user_rank(db, 95, "xp")
+    lower = await repo.user_rank(db, 96, "xp")
+    assert top["rank"] == 1
+    assert lower["rank"] == 2
+
+
+async def test_user_rank_missing_user(db):
+    assert await repo.user_rank(db, 999999, "xp") is None
+
+
 # ── duels (ELO + rewards) ─────────────────────────────────────────────────────
 
 async def test_duel_tie_equal_ratings_no_elo_change(db):

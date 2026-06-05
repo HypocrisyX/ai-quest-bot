@@ -228,11 +228,11 @@ async def evaluate(
 
 # ── Social Service ────────────────────────────────────────────────────────────
 
-async def get_leaderboard(period: str = "week") -> dict:
-    return await _get(f"{SOCIAL_SVC}/leaderboard", params={
-        "period": period,
-        "period_start": date.today().isoformat(),
-    })
+async def get_leaderboard(metric: str = "xp", user_id: int | None = None) -> dict:
+    params = {"metric": metric, "limit": 10}
+    if user_id is not None:
+        params["user_id"] = user_id
+    return await _get(f"{USER_SVC}/leaderboard", params=params)
 
 
 async def create_duel(challenger_id: int, quest_id: int, score: int, answer: str) -> dict:

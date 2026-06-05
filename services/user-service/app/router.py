@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import repository as repo
@@ -38,6 +38,18 @@ async def admin_stats(db: DB):
 @router.get("/admin/users")
 async def admin_users(db: DB, limit: int = 10, offset: int = 0):
     return await repo.admin_list_users(db, limit, offset)
+
+
+@router.get("/leaderboard")
+async def get_leaderboard(
+    db: DB,
+    metric: str = Query("xp", pattern="^(xp|elo)$"),
+    limit: int = Query(10, le=50),
+    user_id: int | None = None,
+):
+    entries = await repo.leaderboard(db, metric, limit)
+    me = await repo.user_rank(db, user_id, metric) if user_id else None
+    return {"metric": metric, "entries": entries, "me": me}
 
 
 @router.post("/users", response_model=UserOut, status_code=201)

@@ -68,6 +68,70 @@ async def admin_list_users(
     return {"total": total or 0, "users": users}
 
 
+# ── Leaderboard ───────────────────────────────────────────────────────────────
+
+def _display_name(username: Optional[str], first_name: str) -> str:
+    return f"@{username}" if username else first_name
+
+
+async def leaderboard(
+    session: AsyncSession, metric: str, limit: int = 10
+) -> list[dict]:
+    """Top users ranked live. metric: 'xp' (level then xp) or 'elo'."""
+    if metric == "elo":
+        order = (UserStats.elo_rating.desc(), UserStats.level.desc())
+    else:
+        order = (UserStats.level.desc(), UserStats.xp.desc())
+
+    result = await session.execute(
+        select(
+            User.id, User.username, User.first_name,
+            UserStats.level, UserStats.xp, UserStats.elo_rating,
+        )
+        .join(UserStats, UserStats.user_id == User.id)
+        .order_by(*order)
+        .limit(limit)
+    )
+    return [
+        {
+            "rank": i,
+            "user_id": uid,
+            "name": _display_name(username, first_name),
+            "level": level,
+            "xp": xp,
+            "elo_rating": elo,
+        }
+        for i, (uid, username, first_name, level, xp, elo) in enumerate(result, start=1)
+    ]
+
+
+async def user_rank(
+    session: AsyncSession, user_id: int, metric: str
+) -> Optional[dict]:
+    """The user's own rank (1-based) and metric value, or None if no stats."""
+    stats = await get_user_stats(session, user_id)
+    if stats is None:
+        return None
+
+    if metric == "elo":
+        higher = await session.scalar(
+            select(func.count()).select_from(UserStats).where(
+                UserStats.elo_rating > stats.elo_rating
+            )
+        )
+        value = stats.elo_rating
+    else:
+        higher = await session.scalar(
+            select(func.count()).select_from(UserStats).where(
+                (UserStats.level > stats.level)
+                | ((UserStats.level == stats.level) & (UserStats.xp > stats.xp))
+            )
+        )
+        value = stats.level
+
+    return {"rank": (higher or 0) + 1, "value": value}
+
+
 async def get_or_create_user(
     session: AsyncSession, data: UserCreate
 ) -> tuple[User, bool]:

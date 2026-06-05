@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+### Живой лидерборд
+
+**Добавлено:**
+- Лидерборд теперь реальный — считается на лету из user-service (раньше читал пустую таблицу `leaderboard_entries` в social-service)
+- Два рейтинга с переключателем: 🏆 По XP (уровень + XP) и ⚔️ По ELO (дуэли); топ-10
+- Показывает твоё место («Ты на N-м месте»)
+- user-service: `repository.leaderboard(metric, limit)` + `user_rank(user_id, metric)`, эндпоинт `GET /leaderboard?metric=xp|elo&user_id=`
+- bot: `client.get_leaderboard(metric, user_id)` переключён на user-service, хендлер с инлайн-переключателем
+- Тесты: ранжирование по уровню+XP, по ELO, своё место, отсутствующий юзер
+- Недельные срезы пока не делаем (нужен трекинг дельт по периодам — позже)
+
 ### Админ-панель в боте
 
 **Добавлено:**
