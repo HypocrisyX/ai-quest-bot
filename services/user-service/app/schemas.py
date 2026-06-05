@@ -2,7 +2,7 @@ from datetime import date, datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class UserCreate(BaseModel):
@@ -128,7 +128,7 @@ class DuelApplyResponse(BaseModel):
 class MarketplaceSettleRequest(BaseModel):
     buyer_id: int
     seller_id: int
-    price: int
+    price: int = Field(gt=0)
 
 
 class PurchaseRequest(BaseModel):

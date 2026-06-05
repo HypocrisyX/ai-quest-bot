@@ -186,6 +186,14 @@ async def test_marketplace_settle_self_rejected(db):
     assert result["reason"] == "self"
 
 
+async def test_marketplace_settle_invalid_price(db):
+    await _make_user(db, 205)
+    await _make_user(db, 206)
+    result = await repo.marketplace_settle(db, buyer_id=206, seller_id=205, price=0)
+    assert result["ok"] is False
+    assert result["reason"] == "invalid_price"
+
+
 # ── duels (ELO + rewards) ─────────────────────────────────────────────────────
 
 async def test_duel_tie_equal_ratings_no_elo_change(db):

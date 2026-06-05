@@ -1,5 +1,8 @@
 """Tests for marketplace-service repository."""
+import pytest
 from app import repository as repo
+from app.schemas import ListingCreate
+from pydantic import ValidationError
 
 
 async def _make_listing(db, seller_id=1, price=100):
@@ -64,3 +67,30 @@ async def test_remove_listing(db):
     assert await repo.remove_listing(db, listing.id) is True
     data = await repo.list_active(db)
     assert data["total"] == 0
+
+
+# ── validation (Pydantic Field constraints) ───────────────────────────────────
+
+def test_listing_price_below_min_rejected():
+    with pytest.raises(ValidationError):
+        ListingCreate(seller_id=1, title="X", price=5, payload_text="y")
+
+
+def test_listing_price_above_max_rejected():
+    with pytest.raises(ValidationError):
+        ListingCreate(seller_id=1, title="X", price=99999, payload_text="y")
+
+
+def test_listing_empty_title_rejected():
+    with pytest.raises(ValidationError):
+        ListingCreate(seller_id=1, title="", price=100, payload_text="y")
+
+
+def test_listing_empty_payload_rejected():
+    with pytest.raises(ValidationError):
+        ListingCreate(seller_id=1, title="X", price=100, payload_text="")
+
+
+def test_listing_valid_accepted():
+    listing = ListingCreate(seller_id=1, title="OK", price=100, payload_text="good")
+    assert listing.price == 100

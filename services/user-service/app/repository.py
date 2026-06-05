@@ -319,6 +319,8 @@ async def marketplace_settle(
     The commission share simply leaves circulation (= the app's revenue; becomes
     real money once Stars are wired up). Returns ok + amounts.
     """
+    if price <= 0:
+        return {"ok": False, "reason": "invalid_price", "seller_earned": 0, "buyer_balance": 0}
     if buyer_id == seller_id:
         return {"ok": False, "reason": "self", "seller_earned": 0, "buyer_balance": 0}
 

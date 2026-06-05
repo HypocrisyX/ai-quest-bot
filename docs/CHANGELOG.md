@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+### Безопасность: серверная валидация экономики
+
+**Добавлено:**
+- marketplace `ListingCreate`: цена 10–10000, title 1–128, payload_text 1–8000, лимиты длины описания/файла/ссылки (Pydantic `Field` → 422)
+- marketplace `PurchaseRequest`: price/seller_earned ≥ 0
+- user-service `MarketplaceSettleRequest`: price > 0; в repo `marketplace_settle` защита `invalid_price` на случай внутреннего вызова
+- Раньше эти проверки были только в боте — теперь дублируются в сервисах (defense-in-depth: даже багнутый/обойдённый вызов не создаст листинг с ценой 0 или settle с отрицательной суммой)
+- Тесты: отклонение цены вне диапазона, пустого title/payload; settle с invalid_price
+
+**Проверено:** цена 0/999999, пустой title/payload → 422; settle с 0/−50 → 422; валидный листинг → 201.
+
 ### Безопасность: межсервисный токен
 
 **Добавлено:**
