@@ -1,4 +1,5 @@
 import os
+import random
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -20,7 +21,14 @@ STREAK_MILESTONES = {7, 30, 100}
 
 router = Router()
 
-PASS_THRESHOLD = 60  # minimum score to pass a quest
+PASS_THRESHOLD = 70  # minimum score to pass a quest
+
+# Bonus ("golden") quest: decided randomly at start. Scoring BONUS_SCORE+ on it
+# grants extra crystals and XP on top of the normal reward.
+BONUS_CHANCE = 0.2
+BONUS_SCORE = 90
+BONUS_CRYSTALS = 20
+BONUS_XP = 50
 
 # When false (AI_JUDGE_ENABLED=false), answers auto-approve without calling the
 # AI judge — saves tokens during testing. Flip back to true to restore real
@@ -144,17 +152,32 @@ async def cb_quest_start(call: CallbackQuery, state: FSMContext):
     progress = await client.start_quest(user_id, quest_id)
     attempt_num = progress.get("attempts", 1)
 
+    is_bonus = random.random() < BONUS_CHANCE
     await state.set_state(QuestFlow.awaiting_answer)
-    await state.update_data(quest=quest, attempt_num=attempt_num)
+    await state.update_data(quest=quest, attempt_num=attempt_num, is_bonus=is_bonus)
 
     time_note = ""
     if quest.get("time_limit_sec"):
         time_note = f"\n⏱ Время: {quest['time_limit_sec'] // 60} мин."
 
+    bonus_note = ""
+    if is_bonus:
+        bonus_note = (
+            f"\n\n⭐️ <b>Бонусный квест!</b> Набери {BONUS_SCORE}+ — "
+            f"получишь сверху +{BONUS_CRYSTALS} 💎 и +{BONUS_XP} XP"
+        )
+
+    is_image = quest.get("category") == "image"
+    prompt = (
+        "🖼 Пришли <b>изображение</b> или ссылку на него:"
+        if is_image
+        else "✍️ Напиши свой ответ:"
+    )
+
     await call.message.edit_text(
-        f"📋 <b>{quest['title']}</b>{time_note}\n\n"
+        f"📋 <b>{quest['title']}</b>{time_note}{bonus_note}\n\n"
         f"{quest['instructions']}\n\n"
-        "✍️ Напиши свой ответ:",
+        f"{prompt}",
         reply_markup=cancel(),
         parse_mode="HTML",
     )
@@ -162,10 +185,33 @@ async def cb_quest_start(call: CallbackQuery, state: FSMContext):
 
 
 @router.message(QuestFlow.awaiting_answer, F.text)
-async def handle_answer(message: Message, state: FSMContext):
+async def handle_text_answer(message: Message, state: FSMContext):
+    await _process_answer(message, state, message.text)
+
+
+@router.message(QuestFlow.awaiting_answer, F.photo)
+async def handle_photo_answer(message: Message, state: FSMContext):
+    # Store the largest photo's file_id (+ caption) as the answer.
+    file_id = message.photo[-1].file_id
+    answer = f"[image:{file_id}]"
+    if message.caption:
+        answer += f" {message.caption}"
+    await _process_answer(message, state, answer)
+
+
+@router.message(QuestFlow.awaiting_answer)
+async def handle_wrong_answer_type(message: Message, state: FSMContext):
+    data = await state.get_data()
+    is_image = data.get("quest", {}).get("category") == "image"
+    hint = "пришли изображение или ссылку" if is_image else "напиши текстовый ответ"
+    await message.answer(f"⚠️ Не понял ответ. Пожалуйста, {hint}.")
+
+
+async def _process_answer(message: Message, state: FSMContext, answer: str):
     data = await state.get_data()
     quest = data["quest"]
     attempt_num = data["attempt_num"]
+    is_bonus = data.get("is_bonus", False)
     user_id = message.from_user.id
 
     if AI_JUDGE_ENABLED:
@@ -174,7 +220,7 @@ async def handle_answer(message: Message, state: FSMContext):
             user_id=user_id,
             quest=quest,
             attempt_num=attempt_num,
-            user_input=message.text,
+            user_input=answer,
         )
         score = evaluation["score"]
         feedback = evaluation["feedback"]
@@ -212,6 +258,15 @@ async def handle_answer(message: Message, state: FSMContext):
         if crystal_reward > 0:
             await client.add_crystals(user_id, crystal_reward, "quest_complete")
             result_text += f"\n💎 +{crystal_reward} кристаллов"
+
+        # Golden-quest bonus for an excellent score.
+        if is_bonus and score >= BONUS_SCORE:
+            await client.add_crystals(user_id, BONUS_CRYSTALS, "quest_bonus")
+            await client.add_xp(user_id, BONUS_XP, "quest_bonus")
+            result_text += (
+                f"\n\n⭐️ <b>Бонус за {score}+!</b> "
+                f"+{BONUS_CRYSTALS} 💎 · +{BONUS_XP} XP"
+            )
 
         streak_days = streak_result.get("streak_days", 0)
         if streak_days in STREAK_MILESTONES:
