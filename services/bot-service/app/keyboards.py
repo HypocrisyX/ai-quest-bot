@@ -9,6 +9,7 @@ def main_menu() -> InlineKeyboardMarkup:
     kb.button(text="🛒 Магазин", callback_data="menu:shop")
     kb.button(text="🏅 Достижения", callback_data="menu:achievements")
     kb.button(text="⚔️ Дуэль", callback_data="menu:duels")
+    kb.button(text="🤝 Друзья", callback_data="menu:ref")
     kb.button(text="📅 Ежедневный", callback_data="menu:daily")
     kb.button(text="👤 Профиль", callback_data="menu:profile")
     kb.button(text="🏆 Топ", callback_data="menu:leaderboard")

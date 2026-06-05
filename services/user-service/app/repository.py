@@ -552,3 +552,42 @@ async def grant_referral_reward(session: AsyncSession, referral_id: int) -> None
         .where(Referral.id == referral_id)
         .values(reward_granted=True)
     )
+
+
+REFERRAL_BONUS = 100  # crystals to BOTH referrer and referee
+
+
+async def complete_referral(
+    session: AsyncSession, referrer_id: int, referee_id: int
+) -> dict:
+    """Link referee→referrer and grant the bonus to both. Idempotent per referee.
+
+    Returns {created: bool, bonus: int, reason: str|None}.
+    """
+    if referrer_id == referee_id:
+        return {"created": False, "bonus": 0, "reason": "self"}
+
+    referrer = await get_user_stats(session, referrer_id)
+    referee = await get_user_stats(session, referee_id)
+    if referrer is None or referee is None:
+        return {"created": False, "bonus": 0, "reason": "missing_user"}
+
+    referral = await create_referral(session, referrer_id, referee_id)
+    if referral is None:
+        return {"created": False, "bonus": 0, "reason": "exists"}
+
+    await add_crystals(session, referrer_id, REFERRAL_BONUS, "referral")
+    await add_crystals(session, referee_id, REFERRAL_BONUS, "referral")
+    await grant_referral_reward(session, referral.id)
+
+    return {"created": True, "bonus": REFERRAL_BONUS, "reason": None}
+
+
+async def referral_stats(session: AsyncSession, referrer_id: int) -> dict:
+    invited = await session.scalar(
+        select(func.count()).select_from(Referral).where(
+            Referral.referrer_id == referrer_id
+        )
+    )
+    invited = invited or 0
+    return {"invited": invited, "earned": invited * REFERRAL_BONUS}

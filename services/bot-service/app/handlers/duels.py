@@ -1,33 +1,23 @@
 import os
-from typing import Optional
 
 from aiogram import Bot, F, Router
-from aiogram.filters import Command, CommandObject, CommandStart
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from app import client
 from app.keyboards import back_to_main, cancel, duel_challenge, duel_quest_list
+from app.links import start_link
 
 router = Router()
 
 AI_JUDGE_ENABLED = os.getenv("AI_JUDGE_ENABLED", "true").lower() == "true"
 
-_bot_username: Optional[str] = None
-
 
 class DuelFlow(StatesGroup):
     creating_answer = State()   # challenger writing their answer
     accepting_answer = State()  # opponent writing their answer
-
-
-async def _duel_link(bot: Bot, code: str) -> str:
-    global _bot_username
-    if _bot_username is None:
-        me = await bot.get_me()
-        _bot_username = me.username
-    return f"https://t.me/{_bot_username}?start=duel_{code}"
 
 
 async def _score_answer(user_id: int, quest: dict, answer: str) -> int:
@@ -96,7 +86,7 @@ async def handle_challenger_answer(message: Message, state: FSMContext):
 
     score = await _score_answer(user_id, quest, message.text)
     duel = await client.create_duel(user_id, quest["id"], score, message.text)
-    link = await _duel_link(message.bot, duel["code"])
+    link = await start_link(message.bot, f"duel_{duel['code']}")
 
     await state.clear()
     await message.answer(
@@ -112,18 +102,9 @@ async def handle_challenger_answer(message: Message, state: FSMContext):
 
 # ── Opponent: accept via deep link ────────────────────────────────────────────
 
-@router.message(CommandStart(deep_link=True))
-async def deep_link_start(message: Message, command: CommandObject, state: FSMContext):
-    payload = command.args or ""
+async def show_duel_invite(message: Message, code: str):
+    """Called by the deep-link dispatcher for a `duel_<code>` payload."""
     user = message.from_user
-    await client.register_user(user.id, user.username, user.first_name, user.language_code or "ru")
-
-    if not payload.startswith("duel_"):
-        # Unknown payload — fall back to a normal greeting.
-        await message.answer("👋 Привет! Используй /start для главного меню.")
-        return
-
-    code = payload[len("duel_"):]
     duel = await client.get_duel_by_code(code)
     if duel is None or duel["status"] != "pending":
         await message.answer("⚔️ Эта дуэль уже недоступна.", reply_markup=back_to_main())
@@ -136,7 +117,6 @@ async def deep_link_start(message: Message, command: CommandObject, state: FSMCo
         return
 
     quest = await client.get_quest_detail(duel["quest_id"])
-    await state.update_data(duel_code=code, quest=quest)
     await message.answer(
         f"⚔️ <b>Тебя вызвали на дуэль!</b>\n\n"
         f"Квест: <b>{quest['title']}</b>\n\n"

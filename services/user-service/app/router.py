@@ -17,7 +17,6 @@ from .schemas import (
     PurchaseRequest,
     PurchaseResponse,
     ReferralCreate,
-    ReferralOut,
     ShopItemOut,
     SubscriptionOut,
     UserCreate,
@@ -144,9 +143,12 @@ async def grant_achievement(user_id: int, code: str, db: DB):
     return {"granted": True}
 
 
-@router.post("/referrals", response_model=ReferralOut, status_code=201)
+@router.post("/referrals")
 async def create_referral(data: ReferralCreate, db: DB):
-    referral = await repo.create_referral(db, data.referrer_id, data.referee_id)
-    if not referral:
-        raise HTTPException(409, "Referral already exists")
-    return referral
+    """Link referee→referrer and grant the bonus to both (idempotent)."""
+    return await repo.complete_referral(db, data.referrer_id, data.referee_id)
+
+
+@router.get("/users/{user_id}/referrals/stats")
+async def referral_stats(user_id: int, db: DB):
+    return await repo.referral_stats(db, user_id)

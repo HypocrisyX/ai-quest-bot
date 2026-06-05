@@ -368,3 +368,42 @@ async def test_create_referral_one_referee_only(db):
     await repo.create_referral(db, referrer_id=44, referee_id=46)
     second = await repo.create_referral(db, referrer_id=45, referee_id=46)
     assert second is None
+
+
+async def test_complete_referral_grants_both(db):
+    await _make_user(db, 50)
+    await _make_user(db, 51)
+    result = await repo.complete_referral(db, referrer_id=50, referee_id=51)
+    assert result["created"] is True
+    assert result["bonus"] == repo.REFERRAL_BONUS
+    assert (await repo.get_user_stats(db, 50)).crystals == repo.REFERRAL_BONUS
+    assert (await repo.get_user_stats(db, 51)).crystals == repo.REFERRAL_BONUS
+
+
+async def test_complete_referral_self_rejected(db):
+    await _make_user(db, 52)
+    result = await repo.complete_referral(db, referrer_id=52, referee_id=52)
+    assert result["created"] is False
+    assert result["reason"] == "self"
+
+
+async def test_complete_referral_idempotent_no_double_grant(db):
+    await _make_user(db, 53)
+    await _make_user(db, 54)
+    await repo.complete_referral(db, referrer_id=53, referee_id=54)
+    second = await repo.complete_referral(db, referrer_id=53, referee_id=54)
+    assert second["created"] is False
+    assert second["reason"] == "exists"
+    # Referrer keeps only the single bonus, no double credit.
+    assert (await repo.get_user_stats(db, 53)).crystals == repo.REFERRAL_BONUS
+
+
+async def test_referral_stats_counts(db):
+    await _make_user(db, 55)
+    await _make_user(db, 56)
+    await _make_user(db, 57)
+    await repo.complete_referral(db, referrer_id=55, referee_id=56)
+    await repo.complete_referral(db, referrer_id=55, referee_id=57)
+    stats = await repo.referral_stats(db, 55)
+    assert stats["invited"] == 2
+    assert stats["earned"] == 2 * repo.REFERRAL_BONUS

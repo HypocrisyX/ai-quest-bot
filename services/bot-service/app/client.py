@@ -59,6 +59,24 @@ async def get_profile(user_id: int) -> dict:
     return await _get(f"{USER_SVC}/users/{user_id}/profile")
 
 
+async def get_user(user_id: int) -> Optional[dict]:
+    try:
+        return await _get(f"{USER_SVC}/users/{user_id}")
+    except aiohttp.ClientResponseError:
+        return None
+
+
+async def complete_referral(referrer_id: int, referee_id: int) -> dict:
+    return await _post(f"{USER_SVC}/referrals", {
+        "referrer_id": referrer_id,
+        "referee_id": referee_id,
+    })
+
+
+async def get_referral_stats(user_id: int) -> dict:
+    return await _get(f"{USER_SVC}/users/{user_id}/referrals/stats")
+
+
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
 async def admin_user_stats() -> dict:

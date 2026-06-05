@@ -12,11 +12,13 @@ from app.handlers import (
     achievements,
     admin,
     daily,
+    deeplink,
     duels,
     leaderboard,
     myquests,
     profile,
     quests,
+    referral,
     shop,
     start,
 )
@@ -70,8 +72,10 @@ async def main() -> None:
     storage = RedisStorage.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
     dp = Dispatcher(storage=storage)
 
-    # duels first: its deep-link /start handler must win over the plain one.
+    # deeplink first: its deep-link /start handler must win over the plain one.
+    dp.include_router(deeplink.router)
     dp.include_router(duels.router)
+    dp.include_router(referral.router)
     dp.include_router(start.router)
     dp.include_router(profile.router)
     dp.include_router(quests.router)
