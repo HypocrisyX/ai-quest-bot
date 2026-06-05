@@ -181,6 +181,7 @@ services:
     <<: *service-defaults
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-user:5432/user_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
     depends_on:
       db-user:
         condition: service_healthy
@@ -194,6 +195,7 @@ services:
     <<: *service-defaults
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-quest:5432/quest_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
     depends_on:
       db-quest:
         condition: service_healthy
@@ -207,6 +209,7 @@ services:
     <<: *service-defaults
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-judge:5432/judge_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     depends_on:
       db-judge:
@@ -221,6 +224,7 @@ services:
     <<: *service-defaults
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-social:5432/social_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
     depends_on:
       db-social:
         condition: service_healthy
@@ -234,6 +238,7 @@ services:
     <<: *service-defaults
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-marketplace:5432/marketplace_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
     depends_on:
       db-marketplace:
         condition: service_healthy
@@ -247,6 +252,7 @@ services:
     <<: *service-defaults
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db-notification:5432/notification_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASS:-guest}@rabbitmq:5672/
     depends_on:
@@ -272,6 +278,7 @@ services:
       SOCIAL_SERVICE_URL: http://social-service:8000
       NOTIFICATION_SERVICE_URL: http://notification-service:8000
       MARKETPLACE_SERVICE_URL: http://marketplace-service:8000
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN}
       ADMIN_IDS: ${ADMIN_IDS:-}
     depends_on:
       redis:

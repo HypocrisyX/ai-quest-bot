@@ -17,6 +17,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("notification-service")
 
+# Shared service-to-service secret. When set, every request (except open paths)
+# must carry X-Internal-Token. Empty token => open mode (local dev).
+INTERNAL_TOKEN = os.getenv("INTERNAL_TOKEN", "")
+_OPEN_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -34,6 +39,14 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Notification Service", lifespan=lifespan)
 app.include_router(router)
+
+
+@app.middleware("http")
+async def internal_auth(request: Request, call_next):
+    if INTERNAL_TOKEN and request.url.path not in _OPEN_PATHS:
+        if request.headers.get("X-Internal-Token") != INTERNAL_TOKEN:
+            return JSONResponse(status_code=401, content={"detail": "Unauthorized"})
+    return await call_next(request)
 
 
 @app.get("/health")

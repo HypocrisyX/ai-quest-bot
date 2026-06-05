@@ -19,7 +19,11 @@ _JUDGE_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=5)  # Claude API can be
 def get_session() -> aiohttp.ClientSession:
     global _session
     if _session is None or _session.closed:
-        _session = aiohttp.ClientSession(timeout=_DEFAULT_TIMEOUT)
+        headers = {}
+        token = os.getenv("INTERNAL_TOKEN", "")
+        if token:
+            headers["X-Internal-Token"] = token  # service-to-service auth
+        _session = aiohttp.ClientSession(timeout=_DEFAULT_TIMEOUT, headers=headers)
     return _session
 
 

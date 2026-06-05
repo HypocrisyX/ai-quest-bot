@@ -121,6 +121,7 @@ services:
       - "8001:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-user:5432/user_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
       db-user:
         condition: service_healthy
@@ -131,6 +132,7 @@ services:
       - "8002:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-quest:5432/quest_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
       db-quest:
         condition: service_healthy
@@ -141,6 +143,7 @@ services:
       - "8003:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-judge:5432/judge_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
     depends_on:
       db-judge:
@@ -152,6 +155,7 @@ services:
       - "8004:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-social:5432/social_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
       db-social:
         condition: service_healthy
@@ -162,6 +166,7 @@ services:
       - "8005:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-notification:5432/notification_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
     depends_on:
@@ -176,6 +181,7 @@ services:
       - "8006:8000"
     environment:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@db-marketplace:5432/marketplace_service
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
     depends_on:
       db-marketplace:
         condition: service_healthy
@@ -194,6 +200,7 @@ services:
       SOCIAL_SERVICE_URL: http://social-service:8000
       NOTIFICATION_SERVICE_URL: http://notification-service:8000
       MARKETPLACE_SERVICE_URL: http://marketplace-service:8000
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-dev-internal-token}
       # TEST MODE: auto-approve quest answers without calling the AI judge.
       # Set to "true" (or remove) to restore real AI evaluation.
       AI_JUDGE_ENABLED: "false"
