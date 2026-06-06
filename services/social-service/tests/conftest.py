@@ -8,8 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 TEST_DB_URL = os.getenv(
-    "TEST_QUEST_DB_URL",
-    "postgresql+asyncpg://postgres:postgres@localhost:5433/quest_service_test",
+    "TEST_SOCIAL_DB_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5435/social_service_test",
 )
 
 

@@ -42,6 +42,14 @@ jobs:
             db: judge_service_test
             port: 5432
             env: TEST_JUDGE_DB_URL
+          - service: social-service
+            db: social_service_test
+            port: 5432
+            env: TEST_SOCIAL_DB_URL
+          - service: marketplace-service
+            db: marketplace_service_test
+            port: 5432
+            env: TEST_MARKET_DB_URL
     services:
       postgres:
         image: postgres:16-alpine
@@ -73,6 +81,9 @@ jobs:
         working-directory: services/${{ matrix.service }}
         env:
           ${{ matrix.env }}: postgresql+asyncpg://postgres:postgres@localhost:5432/${{ matrix.db }}
+          # App engine (used by /health) points at the same test DB so it exists.
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/${{ matrix.db }}
+          INTERNAL_TOKEN: ""
         run: pytest -v
 
   build:

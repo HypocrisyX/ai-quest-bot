@@ -1,4 +1,15 @@
-from sqlalchemy import TIMESTAMP, BigInteger, Column, Date, Integer, SmallInteger, String, Text
+from sqlalchemy import (
+    TIMESTAMP,
+    BigInteger,
+    Column,
+    Date,
+    Index,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.sql import func
 
 from .database import Base
@@ -35,6 +46,13 @@ class LeaderboardEntry(Base):
     xp_gained = Column(Integer, default=0)
     quests_done = Column(SmallInteger, default=0)
     captured_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint(
+            "period", "period_start", "user_id", name="uq_leaderboard_user_period"
+        ),
+        Index("ix_leaderboard_period_rank", "period", "period_start", "rank"),
+    )
 
 
 class Follow(Base):

@@ -5,6 +5,7 @@ from app.database import get_db
 from app.models import Base
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 TEST_DB_URL = os.getenv(
     "TEST_MARKET_DB_URL",
@@ -12,25 +13,25 @@ TEST_DB_URL = os.getenv(
 )
 
 
-@pytest_asyncio.fixture(scope="session")
-async def test_engine():
-    engine = create_async_engine(TEST_DB_URL, echo=False)
+@pytest_asyncio.fixture
+async def db():
+    """Fresh engine per test so it lives in the test's own event loop; the
+    transaction is rolled back at the end to keep tests isolated.
+    """
+    engine = create_async_engine(TEST_DB_URL, poolclass=NullPool)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    yield engine
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-    await engine.dispose()
 
-
-@pytest_asyncio.fixture
-async def db(test_engine):
-    async with test_engine.connect() as conn:
-        await conn.begin()
-        session = AsyncSession(bind=conn, expire_on_commit=False)
+    conn = await engine.connect()
+    trans = await conn.begin()
+    session = AsyncSession(bind=conn, expire_on_commit=False)
+    try:
         yield session
+    finally:
         await session.close()
-        await conn.rollback()
+        await trans.rollback()
+        await conn.close()
+        await engine.dispose()
 
 
 @pytest_asyncio.fixture

@@ -6,6 +6,19 @@
 
 ## [Unreleased]
 
+### Тесты: починка набора + покрытие social/marketplace
+
+**Исправлено (важное):**
+- Тестовый conftest во **всех 5 сервисах** был сломан: session-scoped engine конфликтовал с function-scoped event-loop'ом pytest-asyncio 0.24 → `InterfaceError: another operation is in progress`. CI test-job, вероятно, был красный. Переписано на per-test engine + `NullPool` (живёт в петле теста), транзакция откатывается после каждого теста
+- Дрейф модель↔миграция в `LeaderboardEntry`: unique-constraint `uq_leaderboard_user_period` и индекс были только в миграции, не в модели → `create_all` (тесты) их не создавал, `on_conflict` падал. Добавлены в `__table_args__` (тест поймал)
+
+**Добавлено:**
+- Тесты social-service (14): дуэли (создание, резолв победитель/ничья, self/not-found/already-played, TTL-истечение), лидерборд (upsert + порядок + апдейт), follows
+- social-service и marketplace-service добавлены в CI test-матрицу
+- CI test-step выставляет `DATABASE_URL` (на тестовую БД, чтобы `/health` проходил) и `INTERNAL_TOKEN=""` (open-режим для тест-клиента)
+
+**Прогон локально:** user 55 · quest 22 · ai-judge 10 · social 14 · marketplace 13 = **114 тестов зелёные**.
+
 ### Дуэли: срок жизни 24 часа
 
 **Добавлено:**
