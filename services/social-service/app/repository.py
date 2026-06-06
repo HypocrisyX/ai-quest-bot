@@ -1,5 +1,5 @@
 import secrets
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import delete, func, select
@@ -7,6 +7,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Duel, Follow, LeaderboardEntry
+
+DUEL_TTL = timedelta(hours=24)  # pending duels expire if no one accepts in time
 
 
 async def admin_stats(session: AsyncSession) -> dict:
@@ -69,6 +71,10 @@ async def accept_and_resolve(
         return None, "Дуэль не найдена"
     if duel.status != "pending":
         return None, "Эта дуэль уже сыграна"
+    # Lazy TTL enforcement: an expired pending duel can never be accepted.
+    # (The row stays "pending"; the rejection re-evaluates the age every time.)
+    if duel.created_at and datetime.now(timezone.utc) - duel.created_at > DUEL_TTL:
+        return None, "Эта дуэль истекла"
     if duel.challenger_id == opponent_id:
         return None, "Нельзя принять собственный вызов"
 

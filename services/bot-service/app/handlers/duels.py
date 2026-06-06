@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
@@ -9,6 +10,19 @@ from aiogram.types import CallbackQuery, Message
 from app import client
 from app.keyboards import back_to_main, cancel, duel_challenge, duel_quest_list
 from app.links import start_link
+
+DUEL_TTL = timedelta(hours=24)  # mirror of social-service DUEL_TTL
+
+
+def _duel_expired(duel: dict) -> bool:
+    created = duel.get("created_at")
+    if not created:
+        return False
+    try:
+        ts = datetime.fromisoformat(created)
+    except ValueError:
+        return False
+    return datetime.now(timezone.utc) - ts > DUEL_TTL
 
 router = Router()
 
@@ -94,7 +108,7 @@ async def handle_challenger_answer(message: Message, state: FSMContext):
         f"Отправь сопернику эту ссылку — он ответит на тот же квест,\n"
         "и мы определим победителя:\n\n"
         f"🔗 {link}\n\n"
-        "<i>Дуэль ждёт соперника.</i>",
+        "<i>Дуэль ждёт соперника 24 часа.</i>",
         reply_markup=back_to_main(),
         parse_mode="HTML",
     )
@@ -108,6 +122,9 @@ async def show_duel_invite(message: Message, code: str):
     duel = await client.get_duel_by_code(code)
     if duel is None or duel["status"] != "pending":
         await message.answer("⚔️ Эта дуэль уже недоступна.", reply_markup=back_to_main())
+        return
+    if _duel_expired(duel):
+        await message.answer("⏳ Эта дуэль истекла (срок — 24 часа).", reply_markup=back_to_main())
         return
     if duel["challenger_id"] == user.id:
         await message.answer(
@@ -132,6 +149,9 @@ async def cb_duel_accept(call: CallbackQuery, state: FSMContext):
     duel = await client.get_duel_by_code(code)
     if duel is None or duel["status"] != "pending":
         await call.answer("Эта дуэль уже недоступна", show_alert=True)
+        return
+    if _duel_expired(duel):
+        await call.answer("⏳ Эта дуэль истекла (срок — 24 часа)", show_alert=True)
         return
 
     quest = await client.get_quest_detail(duel["quest_id"])
