@@ -167,6 +167,22 @@ async def get_user_stats(session: AsyncSession, user_id: int) -> Optional[UserSt
     return result.scalar_one_or_none()
 
 
+async def _stats_for_update(session: AsyncSession, user_id: int) -> Optional[UserStats]:
+    """Row-locked read (SELECT ... FOR UPDATE). Use in every path that MUTATES
+    user_stats so concurrent requests serialize instead of racing the balance.
+    """
+    result = await session.execute(
+        select(UserStats).where(UserStats.user_id == user_id).with_for_update()
+    )
+    return result.scalar_one_or_none()
+
+
+async def _lock_two(session: AsyncSession, a_id: int, b_id: int) -> None:
+    """Lock two users' rows in a deadlock-safe order (ascending id)."""
+    for uid in sorted({a_id, b_id}):
+        await _stats_for_update(session, uid)
+
+
 _LEVEL_XP = {1: 1100, 2: 500, 3: 800, 4: 1200, 5: 2000}
 
 
@@ -181,7 +197,7 @@ async def add_xp(
     reason: str,
     ref_id: Optional[str] = None,
 ) -> AddXpResponse:
-    stats = await get_user_stats(session, user_id)
+    stats = await _stats_for_update(session, user_id)
     level_before = stats.level
     xp_before = stats.xp
 
@@ -228,7 +244,7 @@ async def add_crystals(
     reason: str,
     ref_id: Optional[str] = None,
 ) -> AddCrystalsResponse:
-    stats = await get_user_stats(session, user_id)
+    stats = await _stats_for_update(session, user_id)
     balance_before = stats.crystals
     stats.crystals = max(0, stats.crystals + delta)
 
@@ -273,6 +289,7 @@ async def apply_duel_result(
 
     winner_id None means a tie. Returns per-player deltas for display.
     """
+    await _lock_two(session, challenger_id, opponent_id)
     ch = await get_user_stats(session, challenger_id)
     op = await get_user_stats(session, opponent_id)
 
@@ -324,6 +341,7 @@ async def marketplace_settle(
     if buyer_id == seller_id:
         return {"ok": False, "reason": "self", "seller_earned": 0, "buyer_balance": 0}
 
+    await _lock_two(session, buyer_id, seller_id)
     buyer = await get_user_stats(session, buyer_id)
     seller = await get_user_stats(session, seller_id)
     if buyer is None or seller is None:
@@ -398,7 +416,7 @@ async def purchase_item(
     session: AsyncSession, user_id: int, item_key: str
 ) -> tuple[bool, str, int]:
     """Returns (ok, message, crystals_after)."""
-    stats = await get_user_stats(session, user_id)
+    stats = await _stats_for_update(session, user_id)
     if stats is None:
         return False, "Профиль не найден", 0
 
@@ -440,7 +458,7 @@ def list_shop_items(crystals: int) -> list[dict]:
 
 
 async def update_streak(session: AsyncSession, user_id: int) -> int:
-    stats = await get_user_stats(session, user_id)
+    stats = await _stats_for_update(session, user_id)
     today = date.today()
 
     if stats.streak_last_at == today:
@@ -542,7 +560,7 @@ async def check_and_grant_achievements(
     any newly-met ones, apply their rewards, and return the newly granted list.
     """
     newly_granted: list[dict] = []
-    stats = await get_user_stats(session, user_id)
+    stats = await _stats_for_update(session, user_id)
     if stats is None:
         return newly_granted
 
