@@ -17,6 +17,7 @@ logger = logging.getLogger("bot-service")
 PAGE = 6
 PRICE_MIN = 10
 PRICE_MAX = 10000
+MAX_LISTINGS = 10  # mirror of marketplace-service MAX_LISTINGS_PER_SELLER
 
 
 class ListingFlow(StatesGroup):
@@ -54,7 +55,9 @@ async def _open_market(message: Message, user_id: int, edit: bool):
         text = (
             "🏪 <b>Маркетплейс</b>\n\n"
             "Покупай и продавай промпты, ботов, AI-агентов за 💎.\n"
-            "С каждой продажи комиссия 10% идёт площадке."
+            "С каждой продажи комиссия 10% идёт площадке.\n\n"
+            "<i>⚠️ Товары создают пользователи. Покупай на свой риск; "
+            "о нарушениях жми «Пожаловаться».</i>"
         )
         kb = _menu_kb()
     if edit:
@@ -143,7 +146,11 @@ async def _deliver(message: Message, listing_id: int):
     payload = await client.get_listing_payload(listing_id)
     text = f"📦 <b>{payload['title']}</b>\n\n{payload['payload_text']}"
     if payload.get("payload_url"):
-        text += f"\n\n🔗 {payload['payload_url']}"
+        text += (
+            f"\n\n🔗 {payload['payload_url']}"
+            "\n⚠️ <i>Внешняя ссылка от продавца. Переходи на свой риск — "
+            "проверяй, прежде чем открывать.</i>"
+        )
     await message.answer(text, parse_mode="HTML")
     if payload.get("payload_file_id"):
         try:
@@ -227,6 +234,15 @@ async def cb_sell(call: CallbackQuery, state: FSMContext):
     progress = await client.training_complete(call.from_user.id)
     if not progress.get("complete"):
         await call.answer("Сначала пройди все квесты", show_alert=True)
+        return
+    # Pre-check the listing limit so the user doesn't fill the whole form first.
+    listings = await client.get_seller_listings(call.from_user.id)
+    if len(listings) >= MAX_LISTINGS:
+        await call.answer(
+            f"Достигнут лимит {MAX_LISTINGS} активных товаров. "
+            "Сними что-нибудь с продажи.",
+            show_alert=True,
+        )
         return
     await state.set_state(ListingFlow.title)
     await call.message.edit_text(

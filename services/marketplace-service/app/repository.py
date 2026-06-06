@@ -5,6 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Listing, Purchase
 
+MAX_LISTINGS_PER_SELLER = 10
+
+
+async def count_seller_active(session: AsyncSession, seller_id: int) -> int:
+    return await session.scalar(
+        select(func.count()).select_from(Listing).where(
+            Listing.seller_id == seller_id, Listing.status == "active"
+        )
+    ) or 0
+
 
 async def create_listing(
     session: AsyncSession,

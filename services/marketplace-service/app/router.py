@@ -20,6 +20,11 @@ DB = Annotated[AsyncSession, Depends(get_db)]
 
 @router.post("/listings", response_model=ListingOut, status_code=201)
 async def create_listing(data: ListingCreate, db: DB):
+    active = await repo.count_seller_active(db, data.seller_id)
+    if active >= repo.MAX_LISTINGS_PER_SELLER:
+        raise HTTPException(
+            409, f"Listing limit reached ({repo.MAX_LISTINGS_PER_SELLER})"
+        )
     return await repo.create_listing(
         db, data.seller_id, data.title, data.description, data.price,
         data.payload_text, data.payload_file_id, data.payload_url,

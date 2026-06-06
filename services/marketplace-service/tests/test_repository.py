@@ -94,3 +94,13 @@ def test_listing_empty_payload_rejected():
 def test_listing_valid_accepted():
     listing = ListingCreate(seller_id=1, title="OK", price=100, payload_text="good")
     assert listing.price == 100
+
+
+async def test_count_seller_active(db):
+    for _ in range(3):
+        await _make_listing(db, seller_id=7)
+    assert await repo.count_seller_active(db, 7) == 3
+    # removed listings don't count
+    listing = await _make_listing(db, seller_id=7)
+    await repo.remove_listing(db, listing.id)
+    assert await repo.count_seller_active(db, 7) == 3
