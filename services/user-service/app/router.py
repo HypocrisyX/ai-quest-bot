@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -51,6 +52,19 @@ async def get_leaderboard(
     entries = await repo.leaderboard(db, metric, limit)
     me = await repo.user_rank(db, user_id, metric) if user_id else None
     return {"metric": metric, "entries": entries, "me": me}
+
+
+@router.get("/leaderboard/weekly")
+async def get_weekly_leaderboard(
+    db: DB,
+    week: str | None = None,
+    user_id: int | None = None,
+):
+    if week is None:
+        today = date.today()
+        iso = today.isocalendar()
+        week = f"{iso.year}-W{iso.week:02d}"
+    return await repo.leaderboard_weekly(db, week, user_id)
 
 
 @router.post("/users", response_model=UserOut, status_code=201)

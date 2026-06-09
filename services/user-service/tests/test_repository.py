@@ -484,6 +484,67 @@ async def test_referral_stats_counts(db):
     assert stats["earned"] == 2 * repo.REFERRAL_BONUS
 
 
+# ── weekly leaderboard ────────────────────────────────────────────────────────
+
+async def test_weekly_leaderboard_aggregates_xp(db):
+    from app.models import XpHistory
+    from datetime import datetime, timezone
+
+    u1, _ = await make_user(db)
+    u2, _ = await make_user(db)
+    now = datetime.now(timezone.utc)
+    db.add(XpHistory(user_id=u1.id, delta_xp=200, reason="quest_complete", level_after=1, created_at=now))
+    db.add(XpHistory(user_id=u1.id, delta_xp=100, reason="quest_complete", level_after=1, created_at=now))
+    db.add(XpHistory(user_id=u2.id, delta_xp=350, reason="quest_complete", level_after=1, created_at=now))
+    await db.flush()
+
+    today = date.today()
+    iso = today.isocalendar()
+    week = f"{iso.year}-W{iso.week:02d}"
+    result = await repo.leaderboard_weekly(db, week)
+
+    assert result["week"] == week
+    assert len(result["entries"]) == 2
+    assert result["entries"][0]["user_id"] == u2.id
+    assert result["entries"][0]["xp_gained"] == 350
+    assert result["entries"][1]["xp_gained"] == 300
+
+
+async def test_weekly_leaderboard_excludes_last_week(db):
+    from app.models import XpHistory
+    from datetime import datetime, timezone
+
+    u1, _ = await make_user(db)
+    last_week = datetime.now(timezone.utc) - timedelta(days=8)
+    db.add(XpHistory(user_id=u1.id, delta_xp=500, reason="quest_complete", level_after=1, created_at=last_week))
+    await db.flush()
+
+    today = date.today()
+    iso = today.isocalendar()
+    week = f"{iso.year}-W{iso.week:02d}"
+    result = await repo.leaderboard_weekly(db, week)
+    assert result["entries"] == []
+
+
+async def test_weekly_leaderboard_me_rank(db):
+    from app.models import XpHistory
+    from datetime import datetime, timezone
+
+    u1, _ = await make_user(db)
+    u2, _ = await make_user(db)
+    now = datetime.now(timezone.utc)
+    db.add(XpHistory(user_id=u1.id, delta_xp=100, reason="quest_complete", level_after=1, created_at=now))
+    db.add(XpHistory(user_id=u2.id, delta_xp=200, reason="quest_complete", level_after=1, created_at=now))
+    await db.flush()
+
+    today = date.today()
+    iso = today.isocalendar()
+    week = f"{iso.year}-W{iso.week:02d}"
+    result = await repo.leaderboard_weekly(db, week, user_id=u1.id)
+    assert result["me"]["rank"] == 2
+    assert result["me"]["xp_gained"] == 100
+
+
 # ── consume_free_hint / consume_skip / set_title ──────────────────────────────
 
 async def test_consume_free_hint_decrements(db):

@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -130,6 +131,74 @@ async def user_rank(
         value = stats.level
 
     return {"rank": (higher or 0) + 1, "value": value}
+
+
+def _parse_week(week_str: str) -> tuple[datetime, datetime]:
+    """Parse 'YYYY-Www' → (monday_utc, next_monday_utc)."""
+    m = re.match(r"^(\d{4})-W(\d{2})$", week_str)
+    if not m:
+        raise ValueError(f"Invalid week format: {week_str!r}. Expected YYYY-Www")
+    year, week = int(m.group(1)), int(m.group(2))
+    monday = date.fromisocalendar(year, week, 1)
+    next_monday = monday + timedelta(days=7)
+    return (
+        datetime(monday.year, monday.month, monday.day, tzinfo=timezone.utc),
+        datetime(next_monday.year, next_monday.month, next_monday.day, tzinfo=timezone.utc),
+    )
+
+
+async def leaderboard_weekly(
+    session: AsyncSession,
+    week_str: str,
+    user_id: Optional[int] = None,
+    limit: int = 10,
+) -> dict:
+    """Top users by XP gained in the given ISO week. week_str: '2026-W23'."""
+    start, end = _parse_week(week_str)
+
+    xp_sub = (
+        select(XpHistory.user_id, func.sum(XpHistory.delta_xp).label("xp_gained"))
+        .where(XpHistory.created_at >= start, XpHistory.created_at < end)
+        .group_by(XpHistory.user_id)
+        .subquery()
+    )
+    result = await session.execute(
+        select(User.id, User.username, User.first_name, xp_sub.c.xp_gained)
+        .join(xp_sub, xp_sub.c.user_id == User.id)
+        .order_by(xp_sub.c.xp_gained.desc())
+        .limit(limit)
+    )
+    entries = [
+        {
+            "rank": i,
+            "user_id": uid,
+            "name": _display_name(username, first_name),
+            "xp_gained": xp_gained,
+        }
+        for i, (uid, username, first_name, xp_gained) in enumerate(result, start=1)
+    ]
+
+    me = None
+    if user_id is not None:
+        user_xp = await session.scalar(
+            select(func.sum(XpHistory.delta_xp)).where(
+                XpHistory.user_id == user_id,
+                XpHistory.created_at >= start,
+                XpHistory.created_at < end,
+            )
+        ) or 0
+        higher_sub = (
+            select(XpHistory.user_id, func.sum(XpHistory.delta_xp).label("total"))
+            .where(XpHistory.created_at >= start, XpHistory.created_at < end)
+            .group_by(XpHistory.user_id)
+            .subquery()
+        )
+        higher_count = await session.scalar(
+            select(func.count()).select_from(higher_sub).where(higher_sub.c.total > user_xp)
+        ) or 0
+        me = {"rank": higher_count + 1, "xp_gained": user_xp}
+
+    return {"week": week_str, "entries": entries, "me": me}
 
 
 async def get_or_create_user(
