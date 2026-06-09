@@ -14,10 +14,12 @@ def _toggle_kb(metric: str):
     kb = InlineKeyboardBuilder()
     xp_label = "🏆 По XP" + (" ✓" if metric == "xp" else "")
     elo_label = "⚔️ По ELO" + (" ✓" if metric == "elo" else "")
+    week_label = "🗓 Неделя" + (" ✓" if metric == "weekly" else "")
     kb.button(text=xp_label, callback_data="lb:xp")
     kb.button(text=elo_label, callback_data="lb:elo")
+    kb.button(text=week_label, callback_data="lb:weekly")
     kb.button(text="🏠 Главное меню", callback_data="menu:main")
-    kb.adjust(2, 1)
+    kb.adjust(2, 1, 1)
     return kb.as_markup()
 
 
@@ -27,15 +29,23 @@ def _render(data: dict) -> str:
     if not entries:
         return "🏆 Таблица лидеров пуста. Будь первым — проходи квесты!"
 
-    title = "🏆 <b>Топ по XP</b>" if metric == "xp" else "⚔️ <b>Топ по ELO</b>"
-    lines = [title, ""]
-    for e in entries:
-        medal = MEDALS.get(e["rank"], f"<b>{e['rank']}.</b>")
-        if metric == "xp":
-            value = f"ур.{e['level']} · {e['xp']}xp"
-        else:
-            value = f"{e['elo_rating']} ELO"
-        lines.append(f"{medal} {e['name']} — {value}")
+    if metric == "weekly":
+        week = data.get("week", "")
+        title = f"🗓 <b>Топ за неделю {week}</b>"
+        lines = [title, ""]
+        for e in entries:
+            medal = MEDALS.get(e["rank"], f"<b>{e['rank']}.</b>")
+            lines.append(f"{medal} {e['name']} — +{e['xp_gained']} XP")
+    else:
+        title = "🏆 <b>Топ по XP</b>" if metric == "xp" else "⚔️ <b>Топ по ELO</b>"
+        lines = [title, ""]
+        for e in entries:
+            medal = MEDALS.get(e["rank"], f"<b>{e['rank']}.</b>")
+            if metric == "xp":
+                value = f"ур.{e['level']} · {e['xp']}xp"
+            else:
+                value = f"{e['elo_rating']} ELO"
+            lines.append(f"{medal} {e['name']} — {value}")
 
     me = data.get("me")
     if me:
@@ -44,7 +54,11 @@ def _render(data: dict) -> str:
 
 
 async def _show(message: Message, user_id: int, metric: str, edit: bool):
-    data = await client.get_leaderboard(metric, user_id)
+    if metric == "weekly":
+        data = await client.get_weekly_leaderboard(user_id)
+        data["metric"] = "weekly"
+    else:
+        data = await client.get_leaderboard(metric, user_id)
     text = _render(data)
     kb = _toggle_kb(metric)
     if edit:
