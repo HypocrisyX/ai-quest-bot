@@ -32,8 +32,14 @@ async def close_session() -> None:
         await _session.close()
 
 
-async def _post(url: str, body: dict) -> dict:
-    async with get_session().post(url, json=body) as r:
+async def _post(url: str, body: dict, params: Optional[dict] = None) -> dict:
+    async with get_session().post(url, json=body, params=params) as r:
+        r.raise_for_status()
+        return await r.json()
+
+
+async def _patch(url: str, body: dict) -> dict:
+    async with get_session().patch(url, json=body) as r:
         r.raise_for_status()
         return await r.json()
 
@@ -151,6 +157,25 @@ async def purchase_item(user_id: int, item_key: str) -> dict:
     })
 
 
+async def consume_free_hint(user_id: int) -> dict:
+    return await _post(f"{USER_SVC}/users/{user_id}/hints/free/consume", {})
+
+
+async def consume_skip(user_id: int) -> dict:
+    return await _post(f"{USER_SVC}/users/{user_id}/skips/consume", {})
+
+
+async def set_title(user_id: int, title: str) -> dict:
+    return await _patch(f"{USER_SVC}/users/{user_id}/title", {"title": title})
+
+
+async def get_weekly_leaderboard(user_id: int | None = None) -> dict:
+    params: dict = {}
+    if user_id is not None:
+        params["user_id"] = user_id
+    return await _get(f"{USER_SVC}/leaderboard/weekly", params=params)
+
+
 # ── Quest Service ─────────────────────────────────────────────────────────────
 
 async def get_categories(user_id: int) -> list[dict]:
@@ -190,6 +215,13 @@ async def fail_quest(user_id: int, quest_id: int) -> dict:
         "user_id": user_id,
         "quest_id": quest_id,
     })
+
+
+async def skip_quest(user_id: int, quest_id: int) -> dict:
+    return await _post(
+        f"{QUEST_SVC}/quests/{quest_id}/skip", {},
+        params={"user_id": user_id},
+    )
 
 
 async def get_progress(user_id: int, quest_id: int) -> Optional[dict]:
