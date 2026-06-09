@@ -34,6 +34,9 @@ class UserStatsOut(BaseModel):
     total_quests: int
     class_title: str
     xp_boost_quests: int = 0
+    streak_freeze_count: int = 0
+    free_hints: int = 0
+    quest_skips: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -140,6 +143,10 @@ class PurchaseResponse(BaseModel):
     ok: bool
     message: str
     crystals_after: int
+
+
+class SetTitleRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=20)
 
 
 class AddCrystalsRequest(BaseModel):

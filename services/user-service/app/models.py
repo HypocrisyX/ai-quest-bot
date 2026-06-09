@@ -43,6 +43,9 @@ class UserStats(Base):
     total_quests = Column(Integer, default=0)
     class_title = Column(String(32), default="Новичок")
     xp_boost_quests = Column(Integer, nullable=False, server_default="0")  # remaining 2x-XP quests
+    streak_freeze_count = Column(Integer, nullable=False, server_default="0")
+    free_hints = Column(Integer, nullable=False, server_default="0")
+    quest_skips = Column(Integer, nullable=False, server_default="0")
 
 
 class Subscription(Base):
