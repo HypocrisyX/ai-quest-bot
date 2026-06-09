@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy import func, select, update
@@ -464,9 +464,14 @@ async def update_streak(session: AsyncSession, user_id: int) -> int:
     if stats.streak_last_at == today:
         return stats.streak_days
 
-    yesterday = date.fromordinal(today.toordinal() - 1)
+    yesterday = today - timedelta(days=1)
+    two_days_ago = today - timedelta(days=2)
+
     if stats.streak_last_at == yesterday:
         stats.streak_days += 1
+    elif stats.streak_last_at == two_days_ago and (stats.streak_freeze_count or 0) > 0:
+        stats.streak_freeze_count -= 1
+        # streak_days unchanged — freeze preserves it, doesn't advance it
     else:
         stats.streak_days = 1
 

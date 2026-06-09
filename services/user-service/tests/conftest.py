@@ -45,3 +45,25 @@ async def client(db):
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
     app.dependency_overrides.clear()
+
+
+import random
+from app.models import User, UserStats
+
+
+async def make_user(db, **stats_kwargs):
+    """Create a user + stats row with sane defaults. Override any field via kwargs."""
+    uid = random.randint(10**9, 2 * 10**9)
+    user = User(id=uid, first_name="Test", language_code="ru")
+    db.add(user)
+    defaults = dict(
+        level=1, xp=0, xp_to_next=1100, crystals=100,
+        elo_rating=1000, streak_days=0, streak_last_at=None,
+        total_quests=0, xp_boost_quests=0,
+        streak_freeze_count=0, free_hints=0, quest_skips=0,
+    )
+    defaults.update(stats_kwargs)
+    stats = UserStats(user_id=uid, **defaults)
+    db.add(stats)
+    await db.flush()
+    return user, stats

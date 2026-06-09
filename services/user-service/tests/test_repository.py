@@ -1,8 +1,10 @@
 """Tests for user-service business logic in repository.py."""
 from datetime import date, timedelta
 
+import pytest
 from app import repository as repo
 from app.schemas import UserCreate
+from tests.conftest import make_user
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -446,3 +448,46 @@ async def test_referral_stats_counts(db):
     stats = await repo.referral_stats(db, 55)
     assert stats["invited"] == 2
     assert stats["earned"] == 2 * repo.REFERRAL_BONUS
+
+
+# ── streak_freeze ─────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_streak_freeze_consumed_on_one_day_miss(db):
+    _, stats = await make_user(
+        db,
+        streak_days=5,
+        streak_last_at=date.today() - timedelta(days=2),
+        streak_freeze_count=1,
+    )
+    result = await repo.update_streak(db, stats.user_id)
+    assert result == 5  # streak preserved, not reset
+    await db.refresh(stats)
+    assert stats.streak_freeze_count == 0
+    assert stats.streak_last_at == date.today()
+
+
+@pytest.mark.asyncio
+async def test_streak_freeze_not_consumed_on_two_plus_day_miss(db):
+    _, stats = await make_user(
+        db,
+        streak_days=5,
+        streak_last_at=date.today() - timedelta(days=3),
+        streak_freeze_count=1,
+    )
+    result = await repo.update_streak(db, stats.user_id)
+    assert result == 1  # streak reset — gap too large
+    await db.refresh(stats)
+    assert stats.streak_freeze_count == 1  # freeze untouched
+
+
+@pytest.mark.asyncio
+async def test_streak_reset_when_no_freeze_available(db):
+    _, stats = await make_user(
+        db,
+        streak_days=5,
+        streak_last_at=date.today() - timedelta(days=2),
+        streak_freeze_count=0,
+    )
+    result = await repo.update_streak(db, stats.user_id)
+    assert result == 1  # reset — no freeze to save it
