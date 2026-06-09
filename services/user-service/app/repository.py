@@ -461,6 +461,33 @@ async def purchase_item(
     return True, msg, stats.crystals
 
 
+async def consume_free_hint(session: AsyncSession, user_id: int) -> dict:
+    stats = await _stats_for_update(session, user_id)
+    if stats is None or (stats.free_hints or 0) <= 0:
+        return {"used_free": False, "free_hints_left": 0}
+    stats.free_hints -= 1
+    await session.flush()
+    return {"used_free": True, "free_hints_left": stats.free_hints}
+
+
+async def consume_skip(session: AsyncSession, user_id: int) -> dict:
+    stats = await _stats_for_update(session, user_id)
+    if stats is None or (stats.quest_skips or 0) <= 0:
+        return {"consumed": False, "skips_left": 0}
+    stats.quest_skips -= 1
+    await session.flush()
+    return {"consumed": True, "skips_left": stats.quest_skips}
+
+
+async def set_title(session: AsyncSession, user_id: int, title: str) -> str:
+    stats = await _stats_for_update(session, user_id)
+    if stats is None:
+        raise ValueError("User not found")
+    stats.class_title = title.strip()
+    await session.flush()
+    return stats.class_title
+
+
 def list_shop_items(crystals: int) -> list[dict]:
     return [
         {**item, "can_afford": crystals >= item["cost"]}

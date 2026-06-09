@@ -17,6 +17,7 @@ from .schemas import (
     MarketplaceSettleRequest,
     PurchaseRequest,
     PurchaseResponse,
+    SetTitleRequest,
     ReferralCreate,
     ShopItemOut,
     SubscriptionOut,
@@ -121,6 +122,22 @@ async def get_shop(user_id: int, db: DB):
 async def purchase(user_id: int, data: PurchaseRequest, db: DB):
     ok, message, crystals_after = await repo.purchase_item(db, user_id, data.item_key)
     return PurchaseResponse(ok=ok, message=message, crystals_after=crystals_after)
+
+
+@router.post("/users/{user_id}/hints/free/consume")
+async def consume_free_hint(user_id: int, db: DB):
+    return await repo.consume_free_hint(db, user_id)
+
+
+@router.post("/users/{user_id}/skips/consume")
+async def consume_skip(user_id: int, db: DB):
+    return await repo.consume_skip(db, user_id)
+
+
+@router.patch("/users/{user_id}/title")
+async def set_title(user_id: int, data: SetTitleRequest, db: DB):
+    title = await repo.set_title(db, user_id, data.title)
+    return {"class_title": title}
 
 
 @router.get("/users/{user_id}/subscription", response_model=SubscriptionOut | None)

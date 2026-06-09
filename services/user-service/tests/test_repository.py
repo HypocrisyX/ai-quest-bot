@@ -484,6 +484,50 @@ async def test_referral_stats_counts(db):
     assert stats["earned"] == 2 * repo.REFERRAL_BONUS
 
 
+# ── consume_free_hint / consume_skip / set_title ──────────────────────────────
+
+async def test_consume_free_hint_decrements(db):
+    _, stats = await make_user(db, free_hints=3)
+    result = await repo.consume_free_hint(db, stats.user_id)
+    assert result == {"used_free": True, "free_hints_left": 2}
+    await db.refresh(stats)
+    assert stats.free_hints == 2
+
+
+async def test_consume_free_hint_when_none(db):
+    _, stats = await make_user(db, free_hints=0)
+    result = await repo.consume_free_hint(db, stats.user_id)
+    assert result == {"used_free": False, "free_hints_left": 0}
+
+
+async def test_consume_skip_decrements(db):
+    _, stats = await make_user(db, quest_skips=2)
+    result = await repo.consume_skip(db, stats.user_id)
+    assert result == {"consumed": True, "skips_left": 1}
+    await db.refresh(stats)
+    assert stats.quest_skips == 1
+
+
+async def test_consume_skip_when_none(db):
+    _, stats = await make_user(db, quest_skips=0)
+    result = await repo.consume_skip(db, stats.user_id)
+    assert result == {"consumed": False, "skips_left": 0}
+
+
+async def test_set_title_updates_class_title(db):
+    _, stats = await make_user(db)
+    title = await repo.set_title(db, stats.user_id, "AI Мастер")
+    assert title == "AI Мастер"
+    await db.refresh(stats)
+    assert stats.class_title == "AI Мастер"
+
+
+async def test_set_title_strips_whitespace(db):
+    _, stats = await make_user(db)
+    title = await repo.set_title(db, stats.user_id, "  Guru  ")
+    assert title == "Guru"
+
+
 # ── streak_freeze ─────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

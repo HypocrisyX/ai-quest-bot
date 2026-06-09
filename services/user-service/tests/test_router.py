@@ -1,4 +1,5 @@
 """HTTP endpoint tests for user-service."""
+from tests.conftest import make_user
 
 
 # ── /health ───────────────────────────────────────────────────────────────────
@@ -113,3 +114,39 @@ async def test_update_streak(client):
     r = await client.post("/users/6001/streak")
     assert r.status_code == 200
     assert r.json()["streak_days"] == 1
+
+
+# ── consume_free_hint / consume_skip / set_title ──────────────────────────────
+
+async def test_consume_free_hint_endpoint(client, db):
+    _, stats = await make_user(db, free_hints=2)
+    r = await client.post(f"/users/{stats.user_id}/hints/free/consume")
+    assert r.status_code == 200
+    assert r.json() == {"used_free": True, "free_hints_left": 1}
+
+
+async def test_consume_skip_endpoint(client, db):
+    _, stats = await make_user(db, quest_skips=1)
+    r = await client.post(f"/users/{stats.user_id}/skips/consume")
+    assert r.status_code == 200
+    assert r.json()["consumed"] is True
+    assert r.json()["skips_left"] == 0
+
+
+async def test_set_title_endpoint(client, db):
+    _, stats = await make_user(db)
+    r = await client.patch(f"/users/{stats.user_id}/title", json={"title": "Хакер"})
+    assert r.status_code == 200
+    assert r.json()["class_title"] == "Хакер"
+
+
+async def test_set_title_too_long_returns_422(client, db):
+    _, stats = await make_user(db)
+    r = await client.patch(f"/users/{stats.user_id}/title", json={"title": "A" * 21})
+    assert r.status_code == 422
+
+
+async def test_set_title_empty_returns_422(client, db):
+    _, stats = await make_user(db)
+    r = await client.patch(f"/users/{stats.user_id}/title", json={"title": ""})
+    assert r.status_code == 422
