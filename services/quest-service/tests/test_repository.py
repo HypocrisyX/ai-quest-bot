@@ -282,3 +282,30 @@ async def test_training_progress_complete(db):
     assert progress["total"] == 3
     assert progress["completed"] == 3
     assert progress["complete"] is True
+
+
+# ── skip_quest ────────────────────────────────────────────────────────────────
+
+async def test_skip_quest_marks_completed_score_zero(db):
+    quest = await _seed_quest(db)
+    user_id = 55001
+    result = await repo.skip_quest(db, user_id, quest.id)
+    assert result is True
+    progress = await repo.get_user_progress(db, user_id, quest.id)
+    assert progress is not None
+    assert progress.status == "completed"
+    assert progress.best_score == 0
+    assert progress.xp_earned == 0
+
+
+async def test_skip_quest_idempotent(db):
+    quest = await _seed_quest(db)
+    user_id = 55002
+    await repo.skip_quest(db, user_id, quest.id)
+    result = await repo.skip_quest(db, user_id, quest.id)
+    assert result is True
+
+
+async def test_skip_quest_returns_false_for_missing_quest(db):
+    result = await repo.skip_quest(db, 999, 99999)
+    assert result is False

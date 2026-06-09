@@ -97,6 +97,15 @@ async def fail_quest(quest_id: int, data: StartQuestRequest, db: DB = None):
     return await repo.fail_quest(db, data.user_id, quest_id)
 
 
+@router.post("/quests/{quest_id}/skip")
+async def skip_quest(quest_id: int, user_id: int, db: DB = None):
+    """Mark quest completed (score=0, xp=0). Bot must consume the skip token first."""
+    skipped = await repo.skip_quest(db, user_id, quest_id)
+    if not skipped:
+        raise HTTPException(404, "Quest not found")
+    return {"skipped": True}
+
+
 @router.get("/quests/{quest_id}/progress/{user_id}", response_model=QuestProgressOut | None)
 async def get_progress(quest_id: int, user_id: int, db: DB = None):
     return await repo.get_user_progress(db, user_id, quest_id)

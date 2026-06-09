@@ -323,6 +323,25 @@ async def fail_quest(
     return progress
 
 
+async def skip_quest(session: AsyncSession, user_id: int, quest_id: int) -> bool:
+    """Mark quest completed with score=0, xp=0. Returns False if quest not found."""
+    quest = await get_quest(session, quest_id)
+    if not quest:
+        return False
+
+    progress = await get_user_progress(session, user_id, quest_id)
+    if progress and progress.status == "completed":
+        return True
+
+    if not progress:
+        progress = UserQuestProgress(user_id=user_id, quest_id=quest_id, attempts=1)
+        session.add(progress)
+        await session.flush()
+
+    await complete_quest(session, user_id, quest_id, score=0, xp_earned=0)
+    return True
+
+
 async def is_hint_used(
     session: AsyncSession, user_id: int, hint_id: int
 ) -> bool:
