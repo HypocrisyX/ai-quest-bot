@@ -1,3 +1,4 @@
+import asyncio
 import os
 import random
 
@@ -133,11 +134,15 @@ async def cb_quest_locked(call: CallbackQuery):
 @router.callback_query(F.data.startswith("quest:detail:"))
 async def cb_quest_detail(call: CallbackQuery):
     quest_id = int(call.data.split(":")[2])
-    quest = await client.get_quest_detail(quest_id)
+    quest, profile = await asyncio.gather(
+        client.get_quest_detail(quest_id),
+        client.get_profile(call.from_user.id),
+    )
+    quest_skips = profile["stats"].get("quest_skips", 0)
     has_hints = bool(quest.get("hints"))
     await call.message.edit_text(
         _quest_card(quest),
-        reply_markup=quest_detail(quest_id, has_hints),
+        reply_markup=quest_detail(quest_id, has_hints, quest_skips),
         parse_mode="HTML",
     )
     await call.answer()
@@ -304,9 +309,30 @@ async def cb_hint(call: CallbackQuery, state: FSMContext):
 
     first_hint = hints[0]
     cost = first_hint.get("cost", 5)
-    try:
-        await client.spend_crystals(call.from_user.id, cost, "hint")
-        hint_detail = await client.use_hint(first_hint["id"], call.from_user.id)
-        await call.answer(f"💡 {hint_detail['text']}", show_alert=True)
-    except Exception:
-        await call.answer(f"Недостаточно кристаллов (нужно {cost} 💎)", show_alert=True)
+
+    consume = await client.consume_free_hint(call.from_user.id)
+    if not consume["used_free"]:
+        try:
+            await client.spend_crystals(call.from_user.id, cost, "hint")
+        except Exception:
+            await call.answer(f"💎 Недостаточно кристаллов (нужно {cost} 💎)", show_alert=True)
+            return
+
+    hint_detail = await client.use_hint(first_hint["id"], call.from_user.id)
+    free_note = " (бесплатно 💡)" if consume["used_free"] else ""
+    await call.answer(f"💡 {hint_detail['text']}{free_note}", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("quest:skip:"))
+async def cb_quest_skip(call: CallbackQuery):
+    quest_id = int(call.data.split(":")[2])
+    user_id = call.from_user.id
+
+    consume = await client.consume_skip(user_id)
+    if not consume["consumed"]:
+        await call.answer("⏭ Нет токенов пропуска. Купи в магазине!", show_alert=True)
+        return
+
+    await client.skip_quest(user_id, quest_id)
+    await call.answer("⏭ Квест пропущен!", show_alert=True)
+    await _show_categories(call.message, user_id, edit=True)

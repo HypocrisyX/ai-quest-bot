@@ -74,11 +74,13 @@ def quest_list(quests: list[dict]) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def quest_detail(quest_id: int, has_hints: bool = False) -> InlineKeyboardMarkup:
+def quest_detail(quest_id: int, has_hints: bool = False, quest_skips: int = 0) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="▶️ Начать", callback_data=f"quest:start:{quest_id}")
     if has_hints:
         kb.button(text="💡 Подсказка", callback_data=f"quest:hint:{quest_id}")
+    if quest_skips > 0:
+        kb.button(text=f"⏭ Пропустить ({quest_skips})", callback_data=f"quest:skip:{quest_id}")
     kb.button(text="◀️ К списку", callback_data="menu:quests")
     kb.adjust(1)
     return kb.as_markup()
