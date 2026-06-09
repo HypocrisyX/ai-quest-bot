@@ -382,30 +382,30 @@ SHOP_ITEMS = [
     {
         "key": "streak_freeze",
         "title": "🧊 Заморозка серии",
-        "description": "Скоро — сохранит серию при пропуске дня",
+        "description": "Сохранит серию если пропустишь один день",
         "cost": 80,
-        "available": False,
+        "available": True,
     },
     {
         "key": "hint_pack",
         "title": "💡 Набор подсказок",
-        "description": "Скоро — пакет бесплатных подсказок",
+        "description": "3 бесплатные подсказки для квестов",
         "cost": 60,
-        "available": False,
+        "available": True,
     },
     {
         "key": "skip_quest",
         "title": "⏭ Пропуск квеста",
-        "description": "Скоро — пропустить сложный квест",
+        "description": "Пропустить сложный квест (засчитывается без награды)",
         "cost": 120,
-        "available": False,
+        "available": True,
     },
     {
         "key": "custom_title",
         "title": "🏷 Свой титул",
-        "description": "Скоро — кастомный титул в профиле",
+        "description": "Кастомный титул в профиле (1–20 символов)",
         "cost": 200,
-        "available": False,
+        "available": True,
     },
 ]
 
@@ -443,6 +443,17 @@ async def purchase_item(
     if item_key == "xp_boost":
         stats.xp_boost_quests = (stats.xp_boost_quests or 0) + XP_BOOST_QUESTS
         msg = f"⚡️ Буст активирован! ×2 XP на следующие {XP_BOOST_QUESTS} квеста"
+    elif item_key == "streak_freeze":
+        stats.streak_freeze_count = (stats.streak_freeze_count or 0) + 1
+        msg = "🧊 Заморозка добавлена! Сохранит серию при пропуске одного дня."
+    elif item_key == "hint_pack":
+        stats.free_hints = (stats.free_hints or 0) + 3
+        msg = "💡 3 бесплатные подсказки добавлены!"
+    elif item_key == "skip_quest":
+        stats.quest_skips = (stats.quest_skips or 0) + 1
+        msg = "⏭ Пропуск квеста добавлен!"
+    elif item_key == "custom_title":
+        msg = "INPUT:custom_title"
     else:
         msg = "Покупка совершена"
 

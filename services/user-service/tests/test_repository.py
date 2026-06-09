@@ -262,7 +262,7 @@ async def test_purchase_insufficient_crystals(db):
 async def test_purchase_unavailable_item(db):
     await _make_user(db, 62)
     await repo.add_crystals(db, 62, 500, "test")
-    ok, _, _ = await repo.purchase_item(db, 62, "streak_freeze")
+    ok, _, _ = await repo.purchase_item(db, 62, "nonexistent_item_xyz")
     assert ok is False
 
 
@@ -276,6 +276,40 @@ async def test_xp_boost_doubles_quest_xp(db):
 
     stats = await repo.get_user_stats(db, 63)
     assert stats.xp_boost_quests == repo.XP_BOOST_QUESTS - 1
+
+
+async def test_purchase_streak_freeze(db):
+    _, stats = await make_user(db, crystals=200)
+    ok, msg, balance = await repo.purchase_item(db, stats.user_id, "streak_freeze")
+    assert ok is True
+    assert "Заморозка" in msg
+    assert balance == 200 - 80
+    await db.refresh(stats)
+    assert stats.streak_freeze_count == 1
+
+
+async def test_purchase_hint_pack(db):
+    _, stats = await make_user(db, crystals=200)
+    ok, msg, _ = await repo.purchase_item(db, stats.user_id, "hint_pack")
+    assert ok is True
+    await db.refresh(stats)
+    assert stats.free_hints == 3
+
+
+async def test_purchase_skip_quest(db):
+    _, stats = await make_user(db, crystals=200)
+    ok, msg, _ = await repo.purchase_item(db, stats.user_id, "skip_quest")
+    assert ok is True
+    await db.refresh(stats)
+    assert stats.quest_skips == 1
+
+
+async def test_purchase_custom_title_returns_input_signal(db):
+    _, stats = await make_user(db, crystals=300)
+    ok, msg, balance = await repo.purchase_item(db, stats.user_id, "custom_title")
+    assert ok is True
+    assert msg == "INPUT:custom_title"
+    assert balance == 300 - 200
 
 
 async def test_xp_boost_not_applied_to_non_quest(db):
