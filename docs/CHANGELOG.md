@@ -6,6 +6,30 @@
 
 ## [Unreleased]
 
+### Магазин: 4 рабочих товара + недельный лидерборд
+
+**Магазин — товары активированы:**
+- 🧊 **Заморозка серии** (80 💎) — сохраняет streak при пропуске одного дня; логика в `update_streak` (freeze потребляется только при разрыве ровно в 1 день, на 2+ дня не спасает)
+- 💡 **Набор подсказок** (60 💎) — добавляет 3 бесплатные подсказки; при запросе подсказки бот сначала пробует списать free hint, и только потом тратит кристаллы
+- ⏭ **Пропуск квеста** (120 💎) — добавляет токен пропуска; кнопка «Пропустить (N)» появляется в деталях квеста; квест засчитывается с score=0/xp=0
+- 🏷 **Свой титул** (200 💎) — FSM собирает ввод (1–20 символов), сохраняет в `class_title`
+
+**Недельный лидерборд:**
+- Новая вкладка «🗓 Неделя» в лидерборде рядом с XP и ELO
+- Считается по `xp_history` за текущую ISO-неделю (`YYYY-Www`)
+- Показывает своё место и прирост XP за неделю
+- Эндпоинт `GET /leaderboard/weekly?week=&user_id=` в user-service
+
+**БД и API:**
+- Миграция `0003`: поля `streak_freeze_count`, `free_hints`, `quest_skips` в `user_stats`
+- Новые эндпоинты user-service: `POST /hints/free/consume`, `POST /skips/consume`, `PATCH /title`
+- Новый эндпоинт quest-service: `POST /quests/{id}/skip`
+- Новые методы в bot `client.py`: `consume_free_hint`, `consume_skip`, `set_title`, `skip_quest`, `get_weekly_leaderboard`
+
+**Тесты:** streak freeze (3), purchase 4 товаров (4), consume_free_hint/skip/set_title (6+5), leaderboard_weekly (3), skip_quest repo (3) — все зелёные.
+
+---
+
 ### Тесты: починка набора + покрытие social/marketplace
 
 **Исправлено (важное):**
